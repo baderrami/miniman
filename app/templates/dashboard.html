@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Device Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h3"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+        <p class="text-muted">System overview and network status</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-wifi"></i> WiFi AP Status</h5>
+                <div class="d-flex align-items-center mt-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-success fs-1"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-0">DeviceManager</h6>
+                        <small class="text-muted">SSID: DeviceManager</small><br>
+                        <small class="text-muted">IP: 192.168.4.1</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-ethernet"></i> Network Interfaces</h5>
+                <p class="card-text">
+                    <span class="badge bg-success">{{ interfaces|length }}</span> interfaces configured
+                </p>
+                <ul class="list-group list-group-flush">
+                    {% for interface in interfaces %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                        {{ interface.name }}
+                        {% if interface.is_active %}
+                        <span class="badge bg-success rounded-pill">Active</span>
+                        {% else %}
+                        <span class="badge bg-danger rounded-pill">Inactive</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-hdd"></i> System Status</h5>
+                <div class="mt-3">
+                    <div class="mb-2">
+                        <label class="form-label mb-0">CPU Usage</label>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label mb-0">Memory Usage</label>
+                        <div class="progress">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 40%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">40%</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label mb-0">Disk Usage</label>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 60%;" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">60%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-activity"></i> Activity</h5>
+                <p class="card-text">Recent system activity</p>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item p-2">
+                        <small><i class="bi bi-person-check"></i> User login</small>
+                        <small class="d-block text-muted">5 minutes ago</small>
+                    </li>
+                    <li class="list-group-item p-2">
+                        <small><i class="bi bi-ethernet"></i> Network configuration updated</small>
+                        <small class="d-block text-muted">1 hour ago</small>
+                    </li>
+                    <li class="list-group-item p-2">
+                        <small><i class="bi bi-arrow-repeat"></i> System started</small>
+                        <small class="d-block text-muted">2 hours ago</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-graph-up"></i> Network Traffic</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="networkChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle"></i> System Information</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Hostname</span>
+                        <span class="text-muted">device-manager</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>IP Address</span>
+                        <span class="text-muted">192.168.4.1</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Uptime</span>
+                        <span class="text-muted">2d 5h 30m</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Version</span>
+                        <span class="text-muted">1.0.0</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Network traffic chart
+        const ctx = document.getElementById('networkChart').getContext('2d');
+        const networkChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00'],
+                datasets: [{
+                    label: 'Download (KB/s)',
+                    data: [10, 15, 8, 12, 20, 18, 15, 22, 30, 25, 18, 15],
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Upload (KB/s)',
+                    data: [5, 8, 6, 9, 12, 10, 8, 15, 20, 15, 10, 8],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'KB/s'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+        
+        // Update system status every 10 seconds
+        function updateSystemStatus() {
+            // This would be replaced with actual AJAX calls to get real-time data
+            console.log('Updating system status...');
+        }
+        
+        // Initial update
+        updateSystemStatus();
+        
+        // Set interval for updates
+        setInterval(updateSystemStatus, 10000);
+    });
+</script>
+{% endblock %}

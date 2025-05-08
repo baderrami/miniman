@@ -1,0 +1,112 @@
+/* Custom styles for Device Manager application */
+
+/* General styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #343a40;
+}
+
+.footer {
+    border-top: 1px solid #dee2e6;
+}
+
+/* Card styles */
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Progress bar styles */
+.progress {
+    height: 0.75rem;
+    border-radius: 0.5rem;
+}
+
+/* Table styles */
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+/* Command terminal styles */
+pre {
+    background-color: #212529;
+    color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Login page styles */
+.login-page {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+}
+
+/* Dashboard styles */
+.dashboard-card {
+    transition: transform 0.2s;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Network interface status */
+.interface-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.interface-status.active {
+    background-color: #28a745;
+}
+
+.interface-status.inactive {
+    background-color: #dc3545;
+}
+
+/* System information styles */
+.system-info-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.system-info-item:last-child {
+    border-bottom: none;
+}
+
+/* Command list styles */
+.command-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.command-item:hover {
+    background-color: #e9ecef;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    .table {
+        font-size: 0.9rem;
+    }
+}

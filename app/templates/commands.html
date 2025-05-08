@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Command Execution - Device Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h3"><i class="bi bi-terminal"></i> Command Execution</h1>
+        <p class="text-muted">Execute predefined system commands</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-list-check"></i> Available Commands</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for cmd_name, cmd_info in commands.items() %}
+                    <button type="button" class="list-group-item list-group-item-action command-item" 
+                            data-command="{{ cmd_name }}"
+                            data-format="{{ cmd_info.format }}"
+                            data-example="{{ cmd_info.example }}"
+                            data-required="{{ cmd_info.args_required }}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ cmd_name }}</h6>
+                        </div>
+                        <p class="mb-1 text-muted small">{{ cmd_info.description }}</p>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8 mb-3">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-code-square"></i> Execute Command</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('commands.execute') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="command" class="form-label">Command</label>
+                        <select class="form-select" id="command" name="command" required>
+                            <option value="" selected disabled>Select a command</option>
+                            {% for cmd_name in commands %}
+                            <option value="{{ cmd_name }}">{{ cmd_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="format" class="form-label">Format</label>
+                        <input type="text" class="form-control" id="format" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="example" class="form-label">Example</label>
+                        <input type="text" class="form-control" id="example" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="args" class="form-label">Arguments</label>
+                        <input type="text" class="form-control" id="args" name="args">
+                        <div class="form-text" id="argsHelp">Arguments to pass to the command</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-play"></i> Execute
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        {% if output %}
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-terminal"></i> Command Output
+                    <small class="text-muted">{{ last_command }}</small>
+                </h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-dark text-light p-3 rounded"><code>{{ output }}</code></pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click event listeners to command items
+        const commandItems = document.querySelectorAll('.command-item');
+        commandItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                const name = this.getAttribute('data-command');
+                const format = this.getAttribute('data-format');
+                const example = this.getAttribute('data-example');
+                const required = this.getAttribute('data-required') === 'True';
+                
+                selectCommand(name, format, example, required);
+            });
+        });
+        
+        // Initialize command details when selecting from dropdown
+        document.getElementById('command').addEventListener('change', function() {
+            const commandName = this.value;
+            const commandItems = document.querySelectorAll('.command-item');
+            
+            // Find the matching command item
+            for (let i = 0; i < commandItems.length; i++) {
+                const item = commandItems[i];
+                if (item.getAttribute('data-command') === commandName) {
+                    const format = item.getAttribute('data-format');
+                    const example = item.getAttribute('data-example');
+                    const required = item.getAttribute('data-required') === 'True';
+                    
+                    selectCommand(commandName, format, example, required);
+                    break;
+                }
+            }
+        });
+    });
+    
+    function selectCommand(name, format, example, argsRequired) {
+        // Set the command in the dropdown
+        document.getElementById('command').value = name;
+        
+        // Set format and example
+        document.getElementById('format').value = format;
+        document.getElementById('example').value = example;
+        
+        // Focus on args field if required
+        const argsField = document.getElementById('args');
+        argsField.required = argsRequired;
+        
+        if (argsRequired) {
+            argsField.focus();
+            document.getElementById('argsHelp').innerHTML = 'Arguments are required for this command';
+        } else {
+            document.getElementById('argsHelp').innerHTML = 'Arguments to pass to the command (optional)';
+        }
+    }
+</script>
+{% endblock %}

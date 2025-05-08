@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}System Management - Device Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h3"><i class="bi bi-gear"></i> System Management</h1>
+        <p class="text-muted">Monitor and manage system operations</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('system.reset') }}" class="btn btn-danger">
+            <i class="bi bi-arrow-repeat"></i> System Reset
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle"></i> System Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <tbody>
+                            <tr>
+                                <th>Hostname</th>
+                                <td>{{ system_info.hostname }}</td>
+                            </tr>
+                            <tr>
+                                <th>Platform</th>
+                                <td>{{ system_info.platform }} {{ system_info.platform_version }}</td>
+                            </tr>
+                            <tr>
+                                <th>Architecture</th>
+                                <td>{{ system_info.architecture }}</td>
+                            </tr>
+                            <tr>
+                                <th>Processor</th>
+                                <td>{{ system_info.processor }}</td>
+                            </tr>
+                            <tr>
+                                <th>Python Version</th>
+                                <td>{{ system_info.python_version }}</td>
+                            </tr>
+                            <tr>
+                                <th>Uptime</th>
+                                <td>{{ system_info.uptime }}</td>
+                            </tr>
+                            <tr>
+                                <th>CPU Usage</th>
+                                <td>
+                                    <div class="progress">
+                                        <div class="progress-bar cpu-usage-bar" role="progressbar" 
+                                             data-percent="{{ system_info.cpu_usage }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100">
+                                            {{ system_info.cpu_usage }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Load Average</th>
+                                <td>{{ system_info.load_average|join(', ') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-memory"></i> Memory Usage</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Memory Usage</span>
+                        <span>{{ system_info.memory.percent }}%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-info memory-usage-bar" role="progressbar" 
+                             data-percent="{{ system_info.memory.percent }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            {{ system_info.memory.percent }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Total Memory</th>
+                                <td>{{ system_info.memory.total }}</td>
+                            </tr>
+                            <tr>
+                                <th>Used Memory</th>
+                                <td>{{ system_info.memory.used }}</td>
+                            </tr>
+                            <tr>
+                                <th>Available Memory</th>
+                                <td>{{ system_info.memory.available }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-hdd"></i> Disk Usage</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Mount Point</th>
+                                <th>Device</th>
+                                <th>File System</th>
+                                <th>Size</th>
+                                <th>Used</th>
+                                <th>Free</th>
+                                <th>Usage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mount_point, disk in disk_usage.items() %}
+                            <tr>
+                                <td>{{ mount_point }}</td>
+                                <td>{{ disk.device }}</td>
+                                <td>{{ disk.fstype }}</td>
+                                <td>{{ disk.total }}</td>
+                                <td>{{ disk.used }}</td>
+                                <td>{{ disk.free }}</td>
+                                <td>
+                                    <div class="progress">
+                                        {% set bar_class = "bg-success" %}
+                                        {% if disk.percent > 80 %}
+                                            {% set bar_class = "bg-danger" %}
+                                        {% elif disk.percent > 60 %}
+                                            {% set bar_class = "bg-warning" %}
+                                        {% endif %}
+                                        <div class="progress-bar {{ bar_class }} disk-usage-bar" role="progressbar" 
+                                             data-percent="{{ disk.percent }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100">
+                                            {{ disk.percent }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set progress bar widths
+        document.querySelectorAll('.cpu-usage-bar, .memory-usage-bar, .disk-usage-bar').forEach(function(bar) {
+            const percent = bar.getAttribute('data-percent');
+            bar.style.width = percent + '%';
+            bar.setAttribute('aria-valuenow', percent);
+        });
+        
+        // Auto-refresh system information every 30 seconds
+        setInterval(function() {
+            fetch('{{ url_for("system.system_info") }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // This is a simplified example - in a real implementation,
+                        // we would update all the system information elements
+                        console.log('System info updated:', data);
+                    }
+                })
+                .catch(error => console.error('Error updating system info:', error));
+        }, 30000);
+    });
+</script>
+{% endblock %}

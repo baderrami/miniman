@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}Network Management - Device Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h3"><i class="bi bi-ethernet"></i> Network Management</h1>
+        <p class="text-muted">Configure and monitor network interfaces</p>
+    </div>
+    <div class="col-auto">
+        <form action="{{ url_for('network.refresh_interfaces') }}" method="POST">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-arrow-repeat"></i> Refresh Interfaces
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-wifi"></i> WiFi Access Point</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-circle-fill text-success me-2"></i>
+                        <span>Active</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">SSID</label>
+                    <input type="text" class="form-control" value="DeviceManager" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">IP Address</label>
+                    <input type="text" class="form-control" value="192.168.4.1" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Channel</label>
+                    <input type="text" class="form-control" value="7" readonly>
+                </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> WiFi AP configuration is managed by system settings.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-hdd-network"></i> Network Interfaces</h5>
+            </div>
+            <div class="card-body">
+                {% if interfaces %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>Mode</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for interface in interfaces %}
+                            <tr>
+                                <td>{{ interface.name }}</td>
+                                <td>{{ interface.ip_address or 'Not configured' }}</td>
+                                <td>
+                                    {% if interface.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if interface.is_dhcp %}
+                                    <span class="badge bg-info">DHCP</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Static</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('network.configure_network', id=interface.id) }}" class="btn btn-outline-primary">
+                                            <i class="bi bi-gear"></i> Configure
+                                        </a>
+                                        <button type="button" class="btn btn-outline-info" 
+                                                onclick="getInterfaceStatus('{{ interface.id }}')">
+                                            <i class="bi bi-info-circle"></i> Status
+                                        </button>
+                                        <form action="{{ url_for('network.scan_network', id=interface.id) }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-secondary">
+                                                <i class="bi bi-search"></i> Scan
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> No network interfaces found. Click "Refresh Interfaces" to detect available interfaces.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interface Status Modal -->
+<div class="modal fade" id="interfaceStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> Interface Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="interfaceStatusContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading interface status...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Function to get interface status
+    function getInterfaceStatus(interfaceId) {
+        // Show the modal
+        const statusModal = new bootstrap.Modal(document.getElementById('interfaceStatusModal'));
+        statusModal.show();
+        
+        // Get the content container
+        const contentContainer = document.getElementById('interfaceStatusContent');
+        
+        // Make AJAX request to get interface status
+        fetch(`/network/status/${interfaceId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Create HTML content
+                let html = '<div class="table-responsive">';
+                html += '<table class="table table-sm">';
+                html += '<tbody>';
+                
+                // Add status information
+                html += `<tr><th>Name</th><td>${data.name}</td></tr>`;
+                html += `<tr><th>Status</th><td>${data.is_up ? '<span class="badge bg-success">Up</span>' : '<span class="badge bg-danger">Down</span>'}</td></tr>`;
+                html += `<tr><th>IP Address</th><td>${data.ip_address || 'Not configured'}</td></tr>`;
+                html += `<tr><th>Netmask</th><td>${data.netmask || 'Not configured'}</td></tr>`;
+                html += `<tr><th>Gateway</th><td>${data.gateway || 'Not configured'}</td></tr>`;
+                html += `<tr><th>MAC Address</th><td>${data.mac_address || 'Unknown'}</td></tr>`;
+                
+                // Add statistics
+                html += `<tr><th>RX Bytes</th><td>${formatBytes(data.rx_bytes)}</td></tr>`;
+                html += `<tr><th>TX Bytes</th><td>${formatBytes(data.tx_bytes)}</td></tr>`;
+                html += `<tr><th>RX Packets</th><td>${data.rx_packets.toLocaleString()}</td></tr>`;
+                html += `<tr><th>TX Packets</th><td>${data.tx_packets.toLocaleString()}</td></tr>`;
+                html += `<tr><th>Errors</th><td>${data.errors}</td></tr>`;
+                
+                html += '</tbody></table></div>';
+                
+                // Update the content
+                contentContainer.innerHTML = html;
+            })
+            .catch(error => {
+                contentContainer.innerHTML = `<div class="alert alert-danger">Error loading interface status: ${error.message}</div>`;
+            });
+    }
+    
+    // Helper function to format bytes
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+</script>
+{% endblock %}
