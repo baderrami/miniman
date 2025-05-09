@@ -3,6 +3,16 @@
 # Mini Manager - WiFi Access Point Provisioning Script
 # This script automates the setup of an Ubuntu server as a WiFi access point
 # for the Mini Manager application.
+#
+# CHANGELOG:
+# - Added error handling for the configure_nginx function to prevent script failure
+# - Enhanced network configuration with backup and rollback mechanisms
+# - Made hostapd and dnsmasq configuration idempotent (can run multiple times safely)
+# - Added specialized troubleshooting for each service
+# - Improved service startup with automatic recovery from failures
+# - Added fallback configurations for critical services
+# - Extracted common functionality into helper functions
+# - Added verification steps to ensure proper configuration
 
 # Exit on any error
 set -e
@@ -116,12 +126,57 @@ install_packages() {
 configure_hostapd() {
     print_message "Configuring hostapd..."
 
+    # Check if hostapd is already configured
+    if [ -f /etc/hostapd/hostapd.conf ] && grep -q "^ssid=" /etc/hostapd/hostapd.conf; then
+        print_message "hostapd configuration file already exists."
+
+        # Extract existing SSID and password for reuse
+        if grep -q "^ssid=" /etc/hostapd/hostapd.conf; then
+            EXISTING_SSID=$(grep "^ssid=" /etc/hostapd/hostapd.conf | cut -d'=' -f2)
+            print_message "Found existing SSID: $EXISTING_SSID"
+        fi
+
+        read -p "Use existing configuration? [Y/n]: " USE_EXISTING
+        USE_EXISTING=${USE_EXISTING:-Y}
+
+        if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
+            # If using existing config, still need to set WIFI_SSID for other functions
+            if [ -n "$EXISTING_SSID" ]; then
+                WIFI_SSID=$EXISTING_SSID
+                print_message "Using existing SSID: $WIFI_SSID"
+            else
+                # Fallback if we couldn't extract SSID
+                WIFI_SSID="DeviceManager"
+            fi
+
+            # Ensure the configuration file is properly referenced
+            if ! grep -q "DAEMON_CONF=\"/etc/hostapd/hostapd.conf\"" /etc/default/hostapd; then
+                sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
+                print_message "Updated hostapd default configuration."
+            fi
+
+            print_success "Using existing hostapd configuration."
+            return
+        else
+            print_message "Creating new hostapd configuration..."
+            # Backup the existing configuration
+            cp /etc/hostapd/hostapd.conf /etc/hostapd/hostapd.conf.bak.$(date +%Y%m%d%H%M%S)
+            print_message "Backed up existing configuration."
+        fi
+    fi
+
     # Prompt for SSID and password
     read -p "Enter WiFi SSID [DeviceManager]: " WIFI_SSID
     WIFI_SSID=${WIFI_SSID:-DeviceManager}
 
     read -p "Enter WiFi password [securepassword]: " WIFI_PASSWORD
     WIFI_PASSWORD=${WIFI_PASSWORD:-securepassword}
+
+    # Ensure WiFi interface is not managed by NetworkManager
+    if command_exists nmcli; then
+        print_message "Disabling NetworkManager control of $WIFI_INTERFACE..."
+        nmcli device set $WIFI_INTERFACE managed no || true
+    fi
 
     # Create hostapd configuration
     cat > /etc/hostapd/hostapd.conf << EOF
@@ -130,7 +185,9 @@ driver=nl80211
 ssid=$WIFI_SSID
 hw_mode=g
 channel=7
-wmm_enabled=0
+country_code=US
+ieee80211d=1
+wmm_enabled=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
@@ -139,10 +196,20 @@ wpa_passphrase=$WIFI_PASSWORD
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=TKIP
 rsn_pairwise=CCMP
+# Increase stability
+beacon_int=100
+dtim_period=2
+rts_threshold=2347
+fragm_threshold=2346
 EOF
 
     # Configure hostapd to use this configuration file
     sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
+
+    # Explicitly set DAEMON_OPTS in default file to fix environment variable issue
+    if ! grep -q "DAEMON_OPTS=\"\"" /etc/default/hostapd; then
+        echo 'DAEMON_OPTS=""' >> /etc/default/hostapd
+    fi
 
     # Enable hostapd service
     systemctl unmask hostapd
@@ -155,47 +222,51 @@ EOF
 configure_dnsmasq() {
     print_message "Configuring dnsmasq..."
 
-    # Backup original configuration
-    if [ -f /etc/dnsmasq.conf ]; then
-        cp /etc/dnsmasq.conf /etc/dnsmasq.conf.bak
-    fi
+    # Check if dnsmasq is already configured
+    if [ -f /etc/dnsmasq.conf ] && grep -q "interface=$WIFI_INTERFACE" /etc/dnsmasq.conf; then
+        print_message "dnsmasq configuration file already exists for interface $WIFI_INTERFACE."
 
-    # Stop and disable systemd-resolved to avoid port conflicts
-    print_message "Stopping systemd-resolved to avoid port conflicts..."
+        read -p "Use existing dnsmasq configuration? [Y/n]: " USE_EXISTING
+        USE_EXISTING=${USE_EXISTING:-Y}
 
-    # Check if systemd-resolved is running before attempting to stop it
-    if systemctl is-active --quiet systemd-resolved; then
-        systemctl stop systemd-resolved || print_warning "Failed to stop systemd-resolved, it might not be running"
+        if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
+            print_success "Using existing dnsmasq configuration."
+
+            # Still need to ensure systemd-resolved is not conflicting
+            handle_systemd_resolved
+
+            # Ensure resolv.conf is properly configured
+            configure_resolv_conf
+
+            return
+        else
+            print_message "Creating new dnsmasq configuration..."
+            # Backup the existing configuration with timestamp
+            cp /etc/dnsmasq.conf /etc/dnsmasq.conf.bak.$(date +%Y%m%d%H%M%S)
+            print_message "Backed up existing configuration."
+        fi
     else
-        print_message "systemd-resolved is not running, skipping stop"
-    fi
-
-    # Check if systemd-resolved is enabled before attempting to disable it
-    if systemctl is-enabled --quiet systemd-resolved 2>/dev/null; then
-        systemctl disable systemd-resolved || print_warning "Failed to disable systemd-resolved"
-    else
-        print_message "systemd-resolved is not enabled, skipping disable"
-    fi
-
-    # If resolv.conf is a symlink to systemd-resolved's version, replace it
-    if [ -L /etc/resolv.conf ]; then
-        rm /etc/resolv.conf
-        echo "nameserver 8.8.8.8" > /etc/resolv.conf
-        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-        print_success "Created new resolv.conf with Google DNS servers"
-    else
-        # Ensure resolv.conf exists and has proper content
-        if [ ! -f /etc/resolv.conf ] || ! grep -q "nameserver" /etc/resolv.conf; then
-            echo "nameserver 8.8.8.8" > /etc/resolv.conf
-            echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-            print_success "Created/updated resolv.conf with Google DNS servers"
+        # Backup original configuration if it exists
+        if [ -f /etc/dnsmasq.conf ]; then
+            cp /etc/dnsmasq.conf /etc/dnsmasq.conf.bak
         fi
     fi
 
+    # Handle systemd-resolved
+    handle_systemd_resolved
+
+    # Configure resolv.conf
+    configure_resolv_conf
+
     # Create dnsmasq configuration
     cat > /etc/dnsmasq.conf << EOF
-# Listen only on WiFi interface
+# Listen on all interfaces but only respond to the WiFi interface
+bind-interfaces
 interface=$WIFI_INTERFACE
+# Don't forward short names
+domain-needed
+# Don't forward addresses in non-routed address spaces
+bogus-priv
 # Don't use /etc/resolv.conf
 no-resolv
 # Use Google DNS
@@ -203,19 +274,81 @@ server=8.8.8.8
 server=8.8.4.4
 # DHCP range
 dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+# Set default gateway
+dhcp-option=3,192.168.4.1
+# Set DNS server
+dhcp-option=6,192.168.4.1
 # Local domain
 domain=local
 # Address mapping
 address=/device.local/192.168.4.1
+# Disable IP source and interface source checking
+# bind-dynamic option removed - cannot be used with bind-interfaces
 # Logging
 log-queries
 log-dhcp
+# Listen on localhost first (more reliable)
+listen-address=127.0.0.1
+# Comment out specific IP binding initially to avoid startup failures
+# listen-address=192.168.4.1
 EOF
+
+    # Create a directory for dnsmasq to use for DHCP lease information
+    mkdir -p /var/lib/misc
 
     # Enable dnsmasq service
     systemctl enable dnsmasq
 
     print_success "dnsmasq configured."
+}
+
+# Function to handle systemd-resolved
+handle_systemd_resolved() {
+    print_message "Handling systemd-resolved to avoid port conflicts..."
+
+    # Check if systemd-resolved is running before attempting to stop it
+    if systemctl is-active --quiet systemd-resolved; then
+        print_message "Stopping systemd-resolved..."
+        systemctl stop systemd-resolved || print_warning "Failed to stop systemd-resolved, it might not be running"
+    else
+        print_message "systemd-resolved is not running, skipping stop"
+    fi
+
+    # Check if systemd-resolved is enabled before attempting to disable it
+    if systemctl is-enabled --quiet systemd-resolved 2>/dev/null; then
+        print_message "Disabling systemd-resolved..."
+        systemctl disable systemd-resolved || print_warning "Failed to disable systemd-resolved"
+    else
+        print_message "systemd-resolved is not enabled, skipping disable"
+    fi
+
+    print_success "systemd-resolved handled."
+}
+
+# Function to configure resolv.conf
+configure_resolv_conf() {
+    print_message "Configuring resolv.conf..."
+
+    # If resolv.conf is a symlink to systemd-resolved's version, replace it
+    if [ -L /etc/resolv.conf ]; then
+        print_message "Removing symlink to systemd-resolved's resolv.conf..."
+        rm /etc/resolv.conf
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+        print_success "Created new resolv.conf with Google DNS servers"
+    else
+        # Ensure resolv.conf exists and has proper content
+        if [ ! -f /etc/resolv.conf ] || ! grep -q "nameserver" /etc/resolv.conf; then
+            print_message "Creating/updating resolv.conf..."
+            echo "nameserver 8.8.8.8" > /etc/resolv.conf
+            echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+            print_success "Created/updated resolv.conf with Google DNS servers"
+        else
+            print_message "resolv.conf already exists with nameserver entries."
+        fi
+    fi
+
+    print_success "resolv.conf configured."
 }
 
 # Function to configure network interfaces
@@ -231,17 +364,74 @@ configure_network() {
     cat > /etc/netplan/60-wifi-ap.yaml << EOF
 network:
   version: 2
-  ethernets:
+  wifis:
     $WIFI_INTERFACE:
       dhcp4: no
       addresses: [192.168.4.1/24]
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4]
+      access-points:
+        "$WIFI_SSID":
+          mode: ap
+          password: "$WIFI_PASSWORD"
 EOF
 
     # Set proper permissions for netplan configuration file
     chmod 600 /etc/netplan/60-wifi-ap.yaml
 
-    # Apply netplan configuration
-    netplan apply
+    # Add a manual IP address configuration as backup in case netplan fails
+    print_message "Setting up fallback IP configuration..."
+
+    # Ensure interface is up
+    ip link set $WIFI_INTERFACE up
+
+    # Add IP address directly (this will be overridden by netplan if it works)
+    ip addr add 192.168.4.1/24 dev $WIFI_INTERFACE 2>/dev/null || true
+
+    # Save current network configuration for potential rollback
+    print_message "Saving current network configuration for potential rollback..."
+    mkdir -p /opt/network-backup
+    ip addr show > /opt/network-backup/ip-addr-before-netplan.txt
+    ip route show > /opt/network-backup/ip-route-before-netplan.txt
+
+    # Apply netplan configuration with error handling
+    print_message "Applying netplan configuration..."
+    if ! netplan apply; then
+        print_error "Netplan configuration failed. Attempting to restore previous network configuration..."
+
+        # Restore the interface to its previous state
+        if [ -f /opt/network-backup/ip-addr-before-netplan.txt ]; then
+            print_message "Restoring IP addresses..."
+            # Ensure the interface is up
+            ip link set $WIFI_INTERFACE up
+
+            # Re-add the IP address directly
+            ip addr add 192.168.4.1/24 dev $WIFI_INTERFACE 2>/dev/null || true
+
+            print_success "Basic network configuration restored."
+        else
+            print_error "Could not find backup network configuration. Manual intervention may be required."
+        fi
+    else
+        print_success "Netplan configuration applied successfully."
+    fi
+
+    # Verify connectivity
+    print_message "Verifying network configuration..."
+    if ! ip addr show $WIFI_INTERFACE | grep -q "192.168.4.1"; then
+        print_error "IP address 192.168.4.1 not configured on $WIFI_INTERFACE. Applying fallback configuration..."
+
+        # Apply fallback configuration
+        ip addr add 192.168.4.1/24 dev $WIFI_INTERFACE 2>/dev/null || true
+
+        if ip addr show $WIFI_INTERFACE | grep -q "192.168.4.1"; then
+            print_success "Fallback IP configuration applied successfully."
+        else
+            print_error "Failed to apply fallback IP configuration. Manual intervention may be required."
+        fi
+    else
+        print_success "Network interface properly configured with IP 192.168.4.1."
+    fi
 
     print_success "Network interfaces configured."
 }
@@ -275,6 +465,27 @@ configure_iptables() {
         print_warning "Could not determine internet interface. NAT will not be configured."
         return
     fi
+
+    # Flush existing rules
+    iptables -F
+    iptables -t nat -F
+
+    # Allow all traffic on loopback
+    iptables -A INPUT -i lo -j ACCEPT
+
+    # Allow established and related connections
+    iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+    # Allow ICMP (ping)
+    iptables -A INPUT -p icmp -j ACCEPT
+
+    # Allow all traffic from WiFi interface (essential for connectivity)
+    iptables -A INPUT -i $WIFI_INTERFACE -j ACCEPT
+
+    # Allow SSH, HTTP, and HTTPS
+    iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+    iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+    iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 
     # Configure NAT
     iptables -t nat -A POSTROUTING -o $INTERNET_IFACE -j MASQUERADE
@@ -438,6 +649,17 @@ install_flask_app() {
         pip install flask flask-login flask-sqlalchemy flask-wtf gunicorn
     fi
 
+    # Create gunicorn configuration file
+    cat > /opt/device-manager/gunicorn.conf.py << EOF
+    bind = "0.0.0.0:8000"
+    workers = 4
+    worker_class = "sync"
+    timeout = 30
+    loglevel = "info"
+    # Do not daemonize; systemd will manage the process
+    daemon = False
+    EOF
+
     # Initialize database
     if [ -f run.py ]; then
         export FLASK_APP=run.py
@@ -458,7 +680,8 @@ configure_nginx() {
     cat > /etc/nginx/sites-available/device-manager << EOF
 server {
     listen 80;
-    server_name device.local;
+    listen 192.168.4.1:80;
+    server_name device.local _;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -501,6 +724,7 @@ WorkingDirectory=/opt/device-manager
 RuntimeDirectory=device-manager
 RuntimeDirectoryMode=0755
 ExecStart=/opt/device-manager/venv/bin/gunicorn -c gunicorn.conf.py run:app
+    Environment="GUNICORN_CMD_ARGS=--bind=0.0.0.0:8000"
 Restart=always
 RestartSec=5
 
@@ -521,106 +745,458 @@ EOF
 start_services() {
     print_message "Starting services..."
 
-    # Start hostapd
-    print_message "Starting hostapd..."
-    if systemctl is-active --quiet hostapd; then
-        print_message "hostapd is already running, restarting to apply new configuration..."
-        systemctl restart hostapd
+    # Array of services to start
+    SERVICES=("hostapd" "dnsmasq" "wifi-ap.service" "nginx" "device-manager.service")
+
+    # Track overall success
+    OVERALL_SUCCESS=true
+
+    # Special handling for dnsmasq - ensure IP is configured before starting
+    for SERVICE in "${SERVICES[@]}"; do
+        # If this is dnsmasq, verify IP configuration first
+        if [ "$SERVICE" = "dnsmasq" ]; then
+            print_message "Verifying IP configuration before starting dnsmasq..."
+            if ! ip addr show $WIFI_INTERFACE | grep -q "192.168.4.1"; then
+                print_warning "IP address 192.168.4.1 not configured on $WIFI_INTERFACE. Configuring it now..."
+                # Ensure interface is up
+                ip link set $WIFI_INTERFACE up
+                # Add IP address directly
+                ip addr add 192.168.4.1/24 dev $WIFI_INTERFACE 2>/dev/null || true
+                # Wait a moment for the interface to be fully ready
+                sleep 2
+                # Verify IP was added
+                if ip addr show $WIFI_INTERFACE | grep -q "192.168.4.1"; then
+                    print_success "IP address 192.168.4.1 configured on $WIFI_INTERFACE."
+                else
+                    print_error "Failed to configure IP address. dnsmasq may fail to start."
+                fi
+            else
+                print_success "IP address 192.168.4.1 already configured on $WIFI_INTERFACE."
+            fi
+        fi
+
+        # Start the service
+        start_service "$SERVICE" || OVERALL_SUCCESS=false
+    done
+
+    if $OVERALL_SUCCESS; then
+        print_success "All services started successfully."
     else
-        systemctl start hostapd
+        print_warning "Some services failed to start. Check the logs for details."
+        print_message "You can run the diagnostic tool to troubleshoot: /usr/local/bin/diagnose-network"
     fi
 
-    if ! systemctl is-active --quiet hostapd; then
-        print_error "Failed to start hostapd. Check logs with: systemctl status hostapd"
-        print_error "You may need to troubleshoot hostapd configuration."
-        # Continue with other services despite this error
+    print_success "Services started."
+}
+
+# Function to start a specific service with error handling
+start_service() {
+    local SERVICE=$1
+    print_message "Starting $SERVICE..."
+
+    # Check if service is already running
+    if systemctl is-active --quiet "$SERVICE"; then
+        print_message "$SERVICE is already running, restarting to apply new configuration..."
+        systemctl restart "$SERVICE" || {
+            print_error "Failed to restart $SERVICE. Attempting to start it..."
+            systemctl start "$SERVICE"
+        }
     else
-        print_success "hostapd started successfully."
+        systemctl start "$SERVICE"
     fi
 
-    # Start dnsmasq with error handling
-    print_message "Starting dnsmasq..."
-    if systemctl is-active --quiet dnsmasq; then
-        print_message "dnsmasq is already running, restarting to apply new configuration..."
-        systemctl restart dnsmasq
+    # Check if service started successfully
+    if ! systemctl is-active --quiet "$SERVICE"; then
+        print_error "Failed to start $SERVICE. Checking for common issues..."
+
+        case "$SERVICE" in
+            "dnsmasq")
+                handle_dnsmasq_failure
+                ;;
+            "hostapd")
+                handle_hostapd_failure
+                ;;
+            "nginx")
+                handle_nginx_failure
+                ;;
+            "device-manager.service")
+                handle_device_manager_failure
+                ;;
+            *)
+                print_error "Failed to start $SERVICE. Check logs with: systemctl status $SERVICE"
+                ;;
+        esac
+
+        # Final check if service is running
+        if systemctl is-active --quiet "$SERVICE"; then
+            print_success "$SERVICE started successfully after troubleshooting."
+            return 0
+        else
+            print_error "$SERVICE failed to start. Manual intervention may be required."
+            return 1
+        fi
     else
-        systemctl start dnsmasq
+        print_success "$SERVICE started successfully."
+        return 0
     fi
+}
 
-    if ! systemctl is-active --quiet dnsmasq; then
-        print_error "Failed to start dnsmasq. Checking for common issues..."
+# Function to handle dnsmasq failures
+handle_dnsmasq_failure() {
+    print_message "Troubleshooting dnsmasq..."
 
-        # Check if another service is using port 53
-        if command_exists lsof; then
-            PORT_53_PROCESS=$(lsof -i :53 2>/dev/null | grep -v "^COMMAND" | awk '{print $1}' | uniq)
-            if [ -n "$PORT_53_PROCESS" ]; then
-                print_error "Port 53 is already in use by: $PORT_53_PROCESS"
-                print_message "Attempting to stop conflicting service..."
-                systemctl stop $PORT_53_PROCESS 2>/dev/null
-                systemctl disable $PORT_53_PROCESS 2>/dev/null
+    # Check if the error is related to binding to the IP address
+    DNSMASQ_ERROR=$(systemctl status dnsmasq 2>&1 | grep -i "failed to create listening socket" | grep -i "cannot assign requested address")
+    if [ -n "$DNSMASQ_ERROR" ]; then
+        print_error "dnsmasq failed to bind to IP address. Checking if IP is configured..."
+
+        # Check if the IP address is configured on the interface
+        if ! ip addr show $WIFI_INTERFACE | grep -q "192.168.4.1"; then
+            print_error "IP address 192.168.4.1 not configured on $WIFI_INTERFACE. Applying IP configuration..."
+
+            # Ensure interface is up
+            ip link set $WIFI_INTERFACE up
+
+            # Add IP address directly
+            ip addr add 192.168.4.1/24 dev $WIFI_INTERFACE 2>/dev/null || true
+
+            # Verify IP was added
+            if ip addr show $WIFI_INTERFACE | grep -q "192.168.4.1"; then
+                print_success "IP address 192.168.4.1 configured on $WIFI_INTERFACE."
+
+                # Wait a moment for the interface to be fully ready
+                sleep 2
 
                 # Try starting dnsmasq again
                 print_message "Trying to start dnsmasq again..."
                 systemctl start dnsmasq
-                if ! systemctl is-active --quiet dnsmasq; then
-                    print_error "Still unable to start dnsmasq. Check logs with: systemctl status dnsmasq"
-                    print_error "You may need to manually resolve port conflicts."
-                else
-                    print_success "dnsmasq started successfully after resolving conflicts."
-                fi
+                return
             else
-                print_error "No process found using port 53. Check dnsmasq logs with: systemctl status dnsmasq"
-                print_error "You may need to manually troubleshoot dnsmasq configuration."
+                print_error "Failed to configure IP address. Will try alternative configuration."
             fi
+        fi
+
+        # If we get here, either the IP is configured but dnsmasq still can't bind to it,
+        # or we failed to configure the IP. Try with a modified configuration.
+        print_message "Modifying dnsmasq configuration to use only localhost..."
+        cp /etc/dnsmasq.conf /etc/dnsmasq.conf.with_specific_ip
+
+        # Create a configuration that only binds to localhost
+        cat > /etc/dnsmasq.conf << EOF
+# Modified dnsmasq configuration - only binding to localhost
+interface=$WIFI_INTERFACE
+bind-interfaces
+dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+dhcp-option=3,192.168.4.1
+dhcp-option=6,192.168.4.1
+listen-address=127.0.0.1
+# Removed specific IP binding that was causing issues
+EOF
+
+        # Try starting dnsmasq again
+        print_message "Trying to start dnsmasq with modified configuration..."
+        systemctl start dnsmasq
+        return
+    fi
+
+    # Check if another service is using port 53
+    if command_exists lsof; then
+        PORT_53_PROCESS=$(lsof -i :53 2>/dev/null | grep -v "^COMMAND" | awk '{print $1}' | uniq)
+        if [ -n "$PORT_53_PROCESS" ]; then
+            print_error "Port 53 is already in use by: $PORT_53_PROCESS"
+            print_message "Attempting to stop conflicting service..."
+            systemctl stop $PORT_53_PROCESS 2>/dev/null
+            systemctl disable $PORT_53_PROCESS 2>/dev/null
+
+            # Try starting dnsmasq again
+            print_message "Trying to start dnsmasq again..."
+            systemctl start dnsmasq
         else
-            print_error "lsof command not found. Cannot check for port conflicts."
-            print_error "Check dnsmasq logs with: systemctl status dnsmasq"
-        fi
-
-        # Try to provide more specific error information
-        DNSMASQ_STATUS=$(systemctl status dnsmasq 2>&1 | grep "Active:" | sed 's/^[ \t]*//')
-        print_error "dnsmasq status: $DNSMASQ_STATUS"
-
-        # Check if dnsmasq.conf has syntax errors
-        if command_exists dnsmasq; then
-            print_message "Checking dnsmasq configuration for errors..."
-            dnsmasq --test 2>&1 | grep -i error
+            print_error "No process found using port 53. Check dnsmasq logs with: systemctl status dnsmasq"
         fi
     else
-        print_success "dnsmasq started successfully."
+        print_error "lsof command not found. Cannot check for port conflicts."
     fi
 
-    # Start WiFi AP service
-    print_message "Starting WiFi AP service..."
-    if systemctl is-active --quiet wifi-ap.service; then
-        print_message "WiFi AP service is already running, restarting to apply new configuration..."
-        systemctl restart wifi-ap.service
+    # Try to provide more specific error information
+    DNSMASQ_STATUS=$(systemctl status dnsmasq 2>&1 | grep "Active:" | sed 's/^[ \t]*//')
+    print_error "dnsmasq status: $DNSMASQ_STATUS"
+
+    # Check if dnsmasq.conf has syntax errors
+    if command_exists dnsmasq; then
+        print_message "Checking dnsmasq configuration for errors..."
+        dnsmasq --test 2>&1 | grep -i error
+
+        # If there are syntax errors, try to fix common issues
+        if [ $? -eq 0 ]; then
+            print_message "Attempting to fix dnsmasq configuration..."
+            # Backup the problematic config
+            cp /etc/dnsmasq.conf /etc/dnsmasq.conf.problematic
+
+            # Create a minimal working configuration
+            cat > /etc/dnsmasq.conf << EOF
+# Minimal dnsmasq configuration
+interface=$WIFI_INTERFACE
+bind-interfaces
+dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+dhcp-option=3,192.168.4.1
+dhcp-option=6,192.168.4.1
+listen-address=127.0.0.1
+EOF
+
+            # Try starting dnsmasq again
+            print_message "Trying to start dnsmasq with minimal configuration..."
+            systemctl start dnsmasq
+        fi
+    fi
+}
+
+# Function to handle hostapd failures
+handle_hostapd_failure() {
+    print_message "Troubleshooting hostapd..."
+
+    # Check hostapd status
+    HOSTAPD_STATUS=$(systemctl status hostapd 2>&1 | grep "Active:" | sed 's/^[ \t]*//')
+    print_error "hostapd status: $HOSTAPD_STATUS"
+
+    # Check if the WiFi interface exists and is up
+    if ! ip link show "$WIFI_INTERFACE" &>/dev/null; then
+        print_error "WiFi interface $WIFI_INTERFACE does not exist."
+        print_message "Available interfaces:"
+        ip link show | grep -E '^[0-9]+:' | cut -d' ' -f2 | sed 's/://'
+        return 1
+    fi
+
+    # Ensure the interface is up
+    print_message "Ensuring WiFi interface is up..."
+    ip link set "$WIFI_INTERFACE" up
+
+    # Check if the interface supports AP mode
+    if command_exists iw; then
+        print_message "Checking if interface supports AP mode..."
+        if ! iw list | grep -q "AP"; then
+            print_error "WiFi interface $WIFI_INTERFACE may not support AP mode."
+            return 1
+        fi
+    fi
+
+    # Check hostapd configuration
+    print_message "Checking hostapd configuration..."
+    if [ -f /etc/hostapd/hostapd.conf ]; then
+        if grep -q "^interface=$WIFI_INTERFACE" /etc/hostapd/hostapd.conf; then
+            print_message "hostapd configuration appears correct for interface $WIFI_INTERFACE."
+        else
+            print_error "hostapd configuration does not match WiFi interface $WIFI_INTERFACE."
+            print_message "Updating hostapd configuration..."
+            sed -i "s/^interface=.*/interface=$WIFI_INTERFACE/" /etc/hostapd/hostapd.conf
+        fi
     else
-        systemctl start wifi-ap.service
+        print_error "hostapd configuration file not found."
+        return 1
     fi
 
-    if ! systemctl is-active --quiet wifi-ap.service; then
-        print_error "Failed to start WiFi AP service. Check logs with: systemctl status wifi-ap.service"
-    else
-        print_success "WiFi AP service started successfully."
+    # Try starting hostapd again
+    print_message "Trying to start hostapd again..."
+    systemctl start hostapd
+}
+
+# Function to handle nginx failures
+handle_nginx_failure() {
+    print_message "Troubleshooting nginx..."
+
+    # Check nginx configuration
+    print_message "Testing nginx configuration..."
+    nginx -t
+
+    # If there are configuration errors, try to fix them
+    if [ $? -ne 0 ]; then
+        print_error "Nginx configuration has errors."
+
+        # Backup the problematic config
+        if [ -f /etc/nginx/sites-enabled/device-manager ]; then
+            cp /etc/nginx/sites-enabled/device-manager /etc/nginx/sites-enabled/device-manager.problematic
+        fi
+
+        # Create a minimal working configuration
+        print_message "Creating minimal nginx configuration..."
+        cat > /etc/nginx/sites-available/device-manager << EOF
+server {
+    listen 80;
+    listen 192.168.4.1:80;
+    server_name device.local _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+EOF
+
+        # Enable the site
+        ln -sf /etc/nginx/sites-available/device-manager /etc/nginx/sites-enabled/
+
+        # Try starting nginx again
+        print_message "Trying to start nginx with minimal configuration..."
+        systemctl start nginx
+    fi
+}
+
+# Function to handle device-manager service failures
+handle_device_manager_failure() {
+    print_message "Troubleshooting device-manager service..."
+
+    # Check if the application directory exists
+    if [ ! -d "/opt/device-manager" ]; then
+        print_error "Application directory /opt/device-manager does not exist."
+        return 1
     fi
 
-    # Start device manager service
-    print_message "Starting device manager service..."
-    if systemctl is-active --quiet device-manager.service; then
-        print_message "Device manager service is already running, restarting to apply new configuration..."
-        systemctl restart device-manager.service
-    else
-        systemctl start device-manager.service
+    # Check if the virtual environment exists
+    if [ ! -d "/opt/device-manager/venv" ]; then
+        print_error "Virtual environment not found in /opt/device-manager/venv."
+        print_message "Attempting to create virtual environment..."
+
+        cd /opt/device-manager
+        python3 -m venv venv
+        source venv/bin/activate
+
+        # Install dependencies
+        if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+        else
+            pip install flask flask-login flask-sqlalchemy flask-wtf gunicorn
+        fi
+
+        deactivate
     fi
 
-    if ! systemctl is-active --quiet device-manager.service; then
-        print_error "Failed to start device manager service. Check logs with: systemctl status device-manager.service"
-    else
-        print_success "Device manager service started successfully."
+    # Check if gunicorn is installed
+    if [ ! -f "/opt/device-manager/venv/bin/gunicorn" ]; then
+        print_error "Gunicorn not found in virtual environment."
+        print_message "Installing gunicorn..."
+
+        cd /opt/device-manager
+        source venv/bin/activate
+        pip install gunicorn
+        deactivate
     fi
 
-    print_success "Services started."
+    # Check service configuration
+    print_message "Checking service configuration..."
+    if ! grep -q "ExecStart=/opt/device-manager/venv/bin/gunicorn" /etc/systemd/system/device-manager.service; then
+        print_error "Service configuration may be incorrect."
+        print_message "Updating service configuration..."
+
+        # Update service file
+        cat > /etc/systemd/system/device-manager.service << EOF
+[Unit]
+Description=Device Manager Application
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/device-manager
+RuntimeDirectory=device-manager
+RuntimeDirectoryMode=0755
+ExecStart=/opt/device-manager/venv/bin/gunicorn -c gunicorn.conf.py run:app
+Environment="GUNICORN_CMD_ARGS=--bind=0.0.0.0:8000"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+        # Reload systemd
+        systemctl daemon-reload
+    fi
+
+    # Try starting the service again
+    print_message "Trying to start device-manager service again..."
+    systemctl start device-manager.service
+}
+
+# Function to create a diagnostic tool
+create_diagnostic_tool() {
+    print_message "Creating network diagnostic tool..."
+
+    cat > /usr/local/bin/diagnose-network << 'EOF'
+#!/bin/bash
+
+# ANSI color codes for better readability
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}===== Network Diagnostic Tool =====${NC}"
+echo
+
+echo -e "${BLUE}System Information:${NC}"
+uname -a
+echo
+
+echo -e "${BLUE}Network Interfaces:${NC}"
+ip a
+echo
+
+echo -e "${BLUE}IP Routing Table:${NC}"
+ip route
+echo
+
+echo -e "${BLUE}DNS Settings:${NC}"
+cat /etc/resolv.conf
+echo
+
+echo -e "${BLUE}hostapd Status:${NC}"
+systemctl status hostapd | head -20
+echo
+
+echo -e "${BLUE}dnsmasq Status:${NC}"
+systemctl status dnsmasq | head -20
+echo
+
+echo -e "${BLUE}Device Manager Status:${NC}"
+systemctl status device-manager | head -20
+echo
+
+echo -e "${BLUE}Nginx Status:${NC}"
+systemctl status nginx | head -20
+echo
+
+echo -e "${BLUE}iptables Rules:${NC}"
+iptables -L -v
+echo
+
+echo -e "${BLUE}NAT Table:${NC}"
+iptables -t nat -L -v
+echo
+
+echo -e "${BLUE}Connected Devices:${NC}"
+if [ -f /var/lib/misc/dnsmasq.leases ]; then
+    cat /var/lib/misc/dnsmasq.leases
+else
+    echo "No leases file found"
+fi
+echo
+
+echo -e "${BLUE}Active Connections:${NC}"
+netstat -tuln
+echo
+
+echo -e "${YELLOW}To test connectivity, try:${NC}"
+echo "1. Ping the server: ping 192.168.4.1"
+echo "2. Visit the web interface: http://192.168.4.1"
+echo "3. Check DNS resolution: nslookup device.local"
+echo
+
+echo -e "${BLUE}===== End of Diagnostic Report =====${NC}"
+EOF
+
+    chmod +x /usr/local/bin/diagnose-network
+    print_success "Network diagnostic tool created: /usr/local/bin/diagnose-network"
 }
 
 # Function to display summary
@@ -640,6 +1216,9 @@ display_summary() {
     echo ""
     echo "To reset the system to factory settings:"
     echo "  sudo /usr/local/bin/system-reset"
+    echo ""
+    echo "If you encounter connectivity issues, run the diagnostic tool:"
+    echo "  sudo /usr/local/bin/diagnose-network"
     echo ""
 }
 
@@ -687,10 +1266,52 @@ main() {
     install_flask_app
 
     # Configure Nginx
-    configure_nginx
+    if type configure_nginx > /dev/null 2>&1; then
+        configure_nginx
+    else
+        print_error "configure_nginx function not found. Defining it now..."
+        # Define the function inline as a fallback
+        configure_nginx() {
+            print_message "Configuring Nginx..."
+
+            # Create Nginx configuration file
+            cat > /etc/nginx/sites-available/device-manager << EOF
+server {
+    listen 80;
+    listen 192.168.4.1:80;
+    server_name device.local _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+            # Enable the site
+            ln -sf /etc/nginx/sites-available/device-manager /etc/nginx/sites-enabled/
+
+            # Test Nginx configuration
+            nginx -t
+
+            # Enable and restart Nginx
+            systemctl enable nginx
+            systemctl restart nginx
+
+            print_success "Nginx configured."
+        }
+        # Now call the newly defined function
+        configure_nginx
+    fi
 
     # Create application service
     create_app_service
+
+    # Create network diagnostic tool
+    create_diagnostic_tool
 
     # Start services
     start_services
