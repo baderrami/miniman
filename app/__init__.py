@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, url_for
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 
@@ -9,40 +9,45 @@ login_manager = LoginManager()
 def create_app(config_name='default'):
     """
     Create and configure the Flask application
-    
+
     Args:
         config_name (str): Configuration name to use
-        
+
     Returns:
         Flask: Configured Flask application
     """
     app = Flask(__name__)
-    
+
     # Load configuration
     from app.config import config
     app.config.from_object(config[config_name])
-    
+
     # Initialize extensions with app
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
-    
+
     # Register blueprints
     from app.controllers.auth import auth_bp
     from app.controllers.network import network_bp
     from app.controllers.commands import commands_bp
     from app.controllers.system import system_bp
-    
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(network_bp)
     app.register_blueprint(commands_bp)
     app.register_blueprint(system_bp)
-    
+
+    # Add root route
+    @app.route('/')
+    def index():
+        return redirect(url_for('auth.login'))
+
     # Load user model for Flask-Login
     from app.models.user import User
-    
+
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
-    
+
     return app
