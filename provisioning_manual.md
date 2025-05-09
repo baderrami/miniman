@@ -89,6 +89,45 @@ After the script completes, verify that:
 - You can connect to the WiFi network using the credentials you provided
 - The web interface is accessible at http://device.local or http://192.168.4.1
 
+### 6. Rerunning the Script
+
+The provisioning script is designed to be idempotent, meaning it can be run multiple times without breaking the device or duplicating configurations. When rerun, the script will:
+
+1. Check if components are already installed and skip installation steps if appropriate
+2. Detect existing configurations and update them as needed
+3. Restart services to apply any new configurations
+4. Handle errors gracefully and provide helpful diagnostic information
+
+#### Application Directory Handling
+
+If you run the script again, it will detect if the application directory already exists and provide options:
+
+```
+[WARNING] Directory /opt/device-manager already exists and is not empty.
+What would you like to do? [s]kip, [b]ackup and replace, [p]ull updates if it's a git repo:
+```
+
+Choose one of the following options:
+- **s (skip)**: Skip the repository cloning step (default). Use this if you've made custom changes you want to keep.
+- **b (backup and replace)**: Backup the existing directory to `/opt/device-manager-backup-[timestamp]` and clone a fresh copy.
+- **p (pull updates)**: If the directory is a git repository, pull the latest changes. If the pull fails due to local changes, you'll be asked if you want to force update (which will discard local changes).
+
+If the directory is not a git repository and you choose the pull option, you'll be asked if you want to backup and replace it instead.
+
+#### Service Handling
+
+When rerunning the script, it will check if services are already running:
+- If a service is already running, it will be restarted to apply any new configurations
+- If a service fails to start, the script will provide diagnostic information and continue with other services
+- For dnsmasq specifically, the script will check for port conflicts and attempt to resolve them automatically
+
+#### Configuration Files
+
+The script handles existing configuration files in the following ways:
+- Creates backups of original configuration files before modifying them
+- Sets appropriate permissions for sensitive files like netplan configurations
+- Updates configurations as needed while preserving custom settings where possible
+
 ## Script Functionality
 
 The provisioning script performs the following tasks:
@@ -197,6 +236,61 @@ If clients cannot connect to the network:
    ```bash
    sudo journalctl -u dnsmasq
    ```
+
+#### Fixing dnsmasq Service Failures
+
+If dnsmasq fails to start with an error like "Job for dnsmasq.service failed because the control process exited with error code":
+
+1. Check for port conflicts (dnsmasq uses port 53):
+   ```bash
+   sudo lsof -i :53
+   ```
+
+2. If systemd-resolved is using port 53, stop and disable it:
+   ```bash
+   sudo systemctl stop systemd-resolved
+   sudo systemctl disable systemd-resolved
+   ```
+
+3. Fix resolv.conf if it's a symlink to systemd-resolved:
+   ```bash
+   sudo rm /etc/resolv.conf
+   echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+   echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf
+   ```
+
+4. Check dnsmasq configuration for errors:
+   ```bash
+   sudo dnsmasq --test
+   ```
+
+5. Check dnsmasq status for specific error messages:
+   ```bash
+   sudo systemctl status dnsmasq
+   ```
+
+6. Try starting dnsmasq again:
+   ```bash
+   sudo systemctl start dnsmasq
+   ```
+
+7. If the issue persists, try restarting the system and running the script again. The script has been enhanced to handle cases where services are already running or fail to start.
+
+#### Fixing Netplan Configuration Permissions
+
+If you see a warning like "Permissions for /etc/netplan/60-wifi-ap.yaml are too open. Netplan configuration should NOT be accessible by others":
+
+1. Fix the permissions for the netplan configuration file:
+   ```bash
+   sudo chmod 600 /etc/netplan/60-wifi-ap.yaml
+   ```
+
+2. Apply the netplan configuration:
+   ```bash
+   sudo netplan apply
+   ```
+
+The latest version of the provisioning script automatically sets the correct permissions for the netplan configuration file.
 
 ### Web Interface Issues
 
