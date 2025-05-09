@@ -1,6 +1,7 @@
 from flask import Flask, redirect, url_for
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -49,5 +50,10 @@ def create_app(config_name='default'):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
+        
+    # Context processor to add datetime to all templates
+    @app.context_processor
+    def inject_now():
+        return {'now': datetime.now()}
 
     return app
