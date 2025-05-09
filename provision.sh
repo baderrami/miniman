@@ -494,8 +494,12 @@ Description=Device Manager Application
 After=network.target
 
 [Service]
-User=www-data
+# Change from www-data to root or the user who owns the application files
+User=root
 WorkingDirectory=/opt/device-manager
+# Add these lines to specify a runtime directory
+RuntimeDirectory=device-manager
+RuntimeDirectoryMode=0755
 ExecStart=/opt/device-manager/venv/bin/gunicorn -c gunicorn.conf.py run:app
 Restart=always
 RestartSec=5
