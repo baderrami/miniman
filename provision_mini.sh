@@ -7,7 +7,7 @@ PASSPHRASE="123456789"
 STATIC_IP="192.168.50.1/24"
 HTTP_PORT=8000
 APP_DIR="/opt/miniman"
-GIT_REPO="https://github.com/yourusername/miniman.git"  # Set to empty to skip Git clone
+GIT_REPO="https://github.com/baderrami/miniman.git"  # Set to empty to skip Git clone
 
 # ANSI color codes for better readability
 RED='\033[0;31m'
@@ -138,6 +138,24 @@ if ! grep -q "DAEMON_CONF=" /etc/default/hostapd; then
   echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' >> /etc/default/hostapd
 fi
 
+# === Check for systemd-resolved conflict and handle it ===
+print_message "Checking for DNS port conflicts..."
+if lsof -i :53 | grep -q "systemd-r"; then
+  print_message "Detected systemd-resolved using port 53, reconfiguring..."
+  
+  # Disable systemd-resolved service
+  systemctl stop systemd-resolved
+  systemctl disable systemd-resolved
+  
+  # Fix resolv.conf if it's a symlink to systemd-resolved
+  if [ -L /etc/resolv.conf ]; then
+    print_message "Fixing resolv.conf configuration..."
+    rm -f /etc/resolv.conf
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  fi
+fi
+
 # === Configure dnsmasq (create custom if original exists) ===
 DNSMASQ_CONF="/etc/dnsmasq.conf"
 if [ -f "$DNSMASQ_CONF" ] && ! grep -q "interface=wlan0" "$DNSMASQ_CONF"; then
@@ -148,8 +166,21 @@ fi
 if [ ! -f "$DNSMASQ_CONF" ]; then
   print_message "Writing dnsmasq config..."
   cat <<EOF >"$DNSMASQ_CONF"
+# Only bind to the wireless interface
 interface=wlan0
+# Don't use /etc/resolv.conf
+no-resolv
+# Use Google's DNS servers
+server=8.8.8.8
+server=8.8.4.4
+# Set the domain
+domain=local
+# Define the DHCP range
 dhcp-range=192.168.50.10,192.168.50.100,12h
+# Set the gateway address
+dhcp-option=3,192.168.50.1
+# Set DNS server address
+dhcp-option=6,192.168.50.1
 EOF
 fi
 
@@ -182,11 +213,11 @@ fi
 # Clone repository if provided and directory is empty
 if [ -n "$GIT_REPO" ] && [ -z "$(ls -A $APP_DIR)" ]; then
   print_message "Cloning application repository..."
-  git clone "$GIT_REPO" "$APP_DIR"
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
 elif [ -n "$GIT_REPO" ] && [ -d "$APP_DIR/.git" ]; then
   print_message "Updating existing repository..."
   cd "$APP_DIR"
-  git pull
+  GIT_TERMINAL_PROMPT=0 git pull || print_warning "Failed to update repository. Continuing with existing code."
 elif [ -n "$GIT_REPO" ]; then
   print_warning "Directory $APP_DIR exists and is not empty."
   read -p "What would you like to do? [s]kip, [b]ackup and replace, [p]ull updates: " APP_DIR_ACTION
@@ -197,20 +228,20 @@ elif [ -n "$GIT_REPO" ]; then
       print_message "Backing up existing directory..."
       mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
       mkdir -p "$APP_DIR"
-      git clone "$GIT_REPO" "$APP_DIR"
+      GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
       ;;
     p|P)
       if [ -d "$APP_DIR/.git" ]; then
         print_message "Pulling updates..."
         cd "$APP_DIR"
-        git pull
+        GIT_TERMINAL_PROMPT=0 git pull || print_warning "Failed to pull updates. Continuing with existing code."
       else
         print_warning "Not a git repository. Cannot pull updates."
         read -p "Backup and replace instead? [y/N]: " BACKUP_REPLACE
         if [[ "$BACKUP_REPLACE" =~ ^[Yy]$ ]]; then
           mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
           mkdir -p "$APP_DIR"
-          git clone "$GIT_REPO" "$APP_DIR"
+          GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
         fi
       fi
       ;;
@@ -310,9 +341,24 @@ fi
 
 # === Restart network & services ===
 print_message "Restarting services..."
-systemctl restart systemd-networkd
-systemctl restart hostapd
-systemctl restart dnsmasq
+systemctl restart systemd-networkd || print_warning "Failed to restart systemd-networkd, continuing..."
+systemctl restart hostapd || print_warning "Failed to restart hostapd, continuing..."
+
+# Check one more time for port 53 conflicts
+if lsof -i :53 | grep -v dnsmasq; then
+  print_error "Port 53 is still in use by another process. Attempting to force restart dnsmasq..."
+  # Try to kill any process using port 53
+  lsof -i :53 | awk 'NR>1 {print $2}' | xargs -r kill -9
+  sleep 2
+fi
+
+# Restart dnsmasq with error handling
+if ! systemctl restart dnsmasq; then
+  print_error "Failed to start dnsmasq. This may affect DHCP functionality."
+  print_warning "You may need to manually configure DNS and DHCP after setup."
+else
+  print_success "dnsmasq started successfully."
+fi
 
 # === System Reset Functionality ===
 RESET_SCRIPT="/usr/local/bin/system-reset"
