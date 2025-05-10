@@ -137,7 +137,14 @@ update_system() {
 # Function to install required packages
 install_packages() {
     print_message "Installing required packages..."
-    apt install -y hostapd dnsmasq iptables-persistent python3-pip python3-venv nginx git iw
+    
+    # Pre-configure iptables-persistent to avoid interactive prompts
+    print_message "Pre-configuring iptables-persistent to avoid prompts..."
+    echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
+    echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
+    
+    # Install packages with DEBIAN_FRONTEND=noninteractive to prevent interactive prompts
+    DEBIAN_FRONTEND=noninteractive apt install -y hostapd dnsmasq iptables-persistent python3-pip python3-venv nginx git iw
 
     # Stop services initially to prevent them from running with default configs
     systemctl stop hostapd
@@ -518,7 +525,8 @@ configure_iptables() {
 
     # Save iptables rules
     if command_exists netfilter-persistent; then
-        netfilter-persistent save
+        print_message "Saving iptables rules..."
+        DEBIAN_FRONTEND=noninteractive netfilter-persistent save
     else
         print_warning "netfilter-persistent not found. iptables rules will not persist after reboot."
         print_warning "Consider installing iptables-persistent package."
