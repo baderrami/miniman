@@ -280,6 +280,13 @@ fi
 APP_SERVICE="/etc/systemd/system/miniman.service"
 if [ ! -f "$APP_SERVICE" ]; then
   print_message "Creating application service..."
+  
+  # Create runtime directory for gunicorn with proper permissions
+  print_message "Creating runtime directory for gunicorn..."
+  mkdir -p /var/run/miniman
+  chown www-data:www-data /var/run/miniman
+  chmod 755 /var/run/miniman
+  
   cat <<EOF >"$APP_SERVICE"
 [Unit]
 Description=Mini Manager Application
@@ -288,9 +295,14 @@ After=network.target
 [Service]
 User=www-data
 WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/venv/bin/gunicorn -w 4 -b 0.0.0.0:$HTTP_PORT run:app
+RuntimeDirectory=miniman
+# Add runtime directory settings to avoid permission issues
+ExecStart=$APP_DIR/venv/bin/gunicorn -w 4 -b 0.0.0.0:$HTTP_PORT --pid /var/run/miniman/gunicorn.pid --worker-tmp-dir /var/run/miniman run:app
 Restart=always
 RestartSec=5
+# Set more environment variables
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONIOENCODING=UTF-8"
 
 [Install]
 WantedBy=multi-user.target
@@ -305,7 +317,14 @@ EOF
   fi
 
   # Set proper permissions for the application directory
+  print_message "Setting proper permissions for application directory..."
   chown -R www-data:www-data "$APP_DIR"
+  chmod -R 755 "$APP_DIR"
+  
+  # Ensure instance directory exists with proper permissions
+  mkdir -p "$APP_DIR/instance"
+  chown -R www-data:www-data "$APP_DIR/instance"
+  chmod -R 755 "$APP_DIR/instance"
   
   # Enable and start the service
   systemctl enable miniman.service
@@ -316,10 +335,17 @@ fi
 NGINX_CONF="/etc/nginx/sites-available/miniman"
 if [ ! -f "$NGINX_CONF" ]; then
   print_message "Setting up Nginx configuration..."
+  
+  # First remove the default site if it exists to avoid conflicts
+  if [ -f "/etc/nginx/sites-enabled/default" ]; then
+    print_message "Removing default Nginx site to avoid conflicts..."
+    rm -f /etc/nginx/sites-enabled/default
+  fi
+  
   cat <<EOF >"$NGINX_CONF"
 server {
-    listen 80;
-    server_name _;
+    listen 80 default_server;
+    server_name miniman.local 192.168.50.1;
 
     location / {
         proxy_pass http://127.0.0.1:$HTTP_PORT;
@@ -396,6 +422,30 @@ EOF
   chmod +x "$RESET_SCRIPT"
   print_success "System reset functionality created at $RESET_SCRIPT"
 fi
+
+# === Final Checks and Fixes ===
+print_message "Performing final checks and fixes..."
+
+# Check if miniman service is running correctly
+if ! systemctl is-active --quiet miniman.service; then
+  print_warning "miniman service is not running correctly. Attempting to fix common issues..."
+  
+  # Create a systemd tempfiles configuration for miniman
+  cat <<EOF >/etc/tmpfiles.d/miniman.conf
+d /var/run/miniman 0755 www-data www-data -
+EOF
+
+  # Apply tempfiles configuration
+  systemd-tmpfiles --create
+
+  # Restart the service
+  systemctl restart miniman.service
+  
+  print_message "If the service still fails, check logs with: journalctl -u miniman.service"
+fi
+
+# Restart nginx to apply all configuration changes
+systemctl restart nginx || print_warning "Failed to restart nginx"
 
 # === Final Output ===
 print_success "

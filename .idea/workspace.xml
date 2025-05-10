@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Replace iptables-persistent with custom persistence setup&#10;&#10;Switched from iptables-persistent package to a custom solution for managing iptables persistence. Created a systemd service to restore rules at boot and adjusted the script to save the current rules accordingly. This change simplifies the setup and avoids dependency on iptables-persistent.">
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="lkh">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/provision_mini.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provision_mini.sh" afterDir="false" />
     </list>
@@ -84,7 +84,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746888458135</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="lkh">
+      <option name="closed" value="true" />
+      <created>1746889391909</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1746889391909</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -94,7 +102,8 @@
     <MESSAGE value="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated." />
     <MESSAGE value="Refactor iptables-persistent installation process&#10;&#10;Separate iptables-persistent installation to ensure stronger prompt suppression and prevent user interaction. Added steps to generate default rules files and reinforced noninteractive settings for seamless deployment." />
     <MESSAGE value="Replace iptables-persistent with custom persistence setup&#10;&#10;Switched from iptables-persistent package to a custom solution for managing iptables persistence. Created a systemd service to restore rules at boot and adjusted the script to save the current rules accordingly. This change simplifies the setup and avoids dependency on iptables-persistent." />
-    <option name="LAST_COMMIT_MESSAGE" value="" />
+    <MESSAGE value="lkh" />
+    <option name="LAST_COMMIT_MESSAGE" value="lkh" />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
