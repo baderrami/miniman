@@ -35,24 +35,41 @@ print_error() {
 
 # === Ensure required packages are installed ===
 print_message "Installing required packages..."
-
-# First install packages without iptables-persistent
 apt update
-DEBIAN_FRONTEND=noninteractive apt install -y hostapd dnsmasq iptables \
+apt install -y hostapd dnsmasq iptables \
     wireless-tools curl python3-pip python3-venv git nginx
 
-# Now handle iptables-persistent separately with stronger prompt suppression
-print_message "Setting up iptables-persistent without prompts..."
-# Create rules files first if they don't exist
+# Setup custom iptables persistence instead of using iptables-persistent package
+print_message "Setting up custom iptables persistence..."
+# Create rules directories
 mkdir -p /etc/iptables
-[ ! -f /etc/iptables/rules.v4 ] && iptables-save > /etc/iptables/rules.v4
-[ ! -f /etc/iptables/rules.v6 ] && ip6tables-save > /etc/iptables/rules.v6
 
-# Multiple methods to prevent prompts
-export DEBIAN_FRONTEND=noninteractive
-echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
-echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
-apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install iptables-persistent
+# Create systemd service for loading iptables rules at boot
+IPTABLES_SERVICE="/etc/systemd/system/iptables-restore.service"
+if [ ! -f "$IPTABLES_SERVICE" ]; then
+  print_message "Creating iptables-restore service..."
+  cat <<EOF >"$IPTABLES_SERVICE"
+[Unit]
+Description=Restore iptables rules
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "/sbin/iptables-restore < /etc/iptables/rules.v4 || true"
+ExecStart=/bin/sh -c "/sbin/ip6tables-restore < /etc/iptables/rules.v6 || true"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Enable the service
+  systemctl enable iptables-restore.service
+fi
+
+# Save current rules (creating the files if they don't exist)
+iptables-save > /etc/iptables/rules.v4
+ip6tables-save > /etc/iptables/rules.v6
 
 # === Enable systemd-networkd ===
 systemctl enable systemd-networkd
@@ -148,6 +165,7 @@ fi
 if ! iptables -t nat -C PREROUTING -i wlan0 -p tcp --dport 80 -j REDIRECT --to-port $HTTP_PORT 2>/dev/null; then
   print_message "Adding iptables NAT rule to redirect HTTP to port $HTTP_PORT"
   iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 80 -j REDIRECT --to-port $HTTP_PORT
+  # Save the updated rules to make them persistent
   iptables-save > /etc/iptables/rules.v4
 else
   print_message "iptables NAT rule already exists, skipping"
