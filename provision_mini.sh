@@ -35,14 +35,24 @@ print_error() {
 
 # === Ensure required packages are installed ===
 print_message "Installing required packages..."
-# Pre-configure iptables-persistent to not prompt for saving rules
-echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
-echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
 
-# Use noninteractive frontend to prevent prompts
+# First install packages without iptables-persistent
 apt update
-DEBIAN_FRONTEND=noninteractive apt install -y hostapd dnsmasq iptables iptables-persistent \
+DEBIAN_FRONTEND=noninteractive apt install -y hostapd dnsmasq iptables \
     wireless-tools curl python3-pip python3-venv git nginx
+
+# Now handle iptables-persistent separately with stronger prompt suppression
+print_message "Setting up iptables-persistent without prompts..."
+# Create rules files first if they don't exist
+mkdir -p /etc/iptables
+[ ! -f /etc/iptables/rules.v4 ] && iptables-save > /etc/iptables/rules.v4
+[ ! -f /etc/iptables/rules.v6 ] && ip6tables-save > /etc/iptables/rules.v6
+
+# Multiple methods to prevent prompts
+export DEBIAN_FRONTEND=noninteractive
+echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
+echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install iptables-persistent
 
 # === Enable systemd-networkd ===
 systemctl enable systemd-networkd
