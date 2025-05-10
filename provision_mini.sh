@@ -35,8 +35,13 @@ print_error() {
 
 # === Ensure required packages are installed ===
 print_message "Installing required packages..."
+# Pre-configure iptables-persistent to not prompt for saving rules
+echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
+echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
+
+# Use noninteractive frontend to prevent prompts
 apt update
-apt install -y hostapd dnsmasq iptables iptables-persistent \
+DEBIAN_FRONTEND=noninteractive apt install -y hostapd dnsmasq iptables iptables-persistent \
     wireless-tools curl python3-pip python3-venv git nginx
 
 # === Enable systemd-networkd ===
