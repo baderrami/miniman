@@ -12,7 +12,7 @@ keepalive = 2
 
 # Server mechanics
 daemon = False
-pidfile = '/var/run/gunicorn.pid'
+pidfile = '/var/run/miniman/gunicorn.pid'
 umask = 0o007
 user = None
 group = None

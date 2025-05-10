@@ -142,11 +142,11 @@ fi
 print_message "Checking for DNS port conflicts..."
 if lsof -i :53 | grep -q "systemd-r"; then
   print_message "Detected systemd-resolved using port 53, reconfiguring..."
-  
+
   # Disable systemd-resolved service
   systemctl stop systemd-resolved
   systemctl disable systemd-resolved
-  
+
   # Fix resolv.conf if it's a symlink to systemd-resolved
   if [ -L /etc/resolv.conf ]; then
     print_message "Fixing resolv.conf configuration..."
@@ -222,7 +222,7 @@ elif [ -n "$GIT_REPO" ]; then
   print_warning "Directory $APP_DIR exists and is not empty."
   read -p "What would you like to do? [s]kip, [b]ackup and replace, [p]ull updates: " APP_DIR_ACTION
   APP_DIR_ACTION=${APP_DIR_ACTION:-s}
-  
+
   case "$APP_DIR_ACTION" in
     b|B)
       print_message "Backing up existing directory..."
@@ -256,7 +256,7 @@ if [ ! -d "$APP_DIR/venv" ]; then
   print_message "Creating Python virtual environment..."
   cd "$APP_DIR"
   python3 -m venv venv
-  
+
   # Install requirements if requirements.txt exists
   if [ -f "$APP_DIR/requirements.txt" ]; then
     print_message "Installing Python dependencies..."
@@ -280,13 +280,13 @@ fi
 APP_SERVICE="/etc/systemd/system/miniman.service"
 if [ ! -f "$APP_SERVICE" ]; then
   print_message "Creating application service..."
-  
+
   # Create runtime directory for gunicorn with proper permissions
   print_message "Creating runtime directory for gunicorn..."
   mkdir -p /var/run/miniman
   chown www-data:www-data /var/run/miniman
   chmod 755 /var/run/miniman
-  
+
   cat <<EOF >"$APP_SERVICE"
 [Unit]
 Description=Mini Manager Application
@@ -320,12 +320,12 @@ EOF
   print_message "Setting proper permissions for application directory..."
   chown -R www-data:www-data "$APP_DIR"
   chmod -R 755 "$APP_DIR"
-  
+
   # Ensure instance directory exists with proper permissions
   mkdir -p "$APP_DIR/instance"
   chown -R www-data:www-data "$APP_DIR/instance"
   chmod -R 755 "$APP_DIR/instance"
-  
+
   # Enable and start the service
   systemctl enable miniman.service
   systemctl start miniman.service || print_warning "Failed to start application service."
@@ -335,23 +335,37 @@ fi
 NGINX_CONF="/etc/nginx/sites-available/miniman"
 if [ ! -f "$NGINX_CONF" ]; then
   print_message "Setting up Nginx configuration..."
-  
+
   # First remove the default site if it exists to avoid conflicts
   if [ -f "/etc/nginx/sites-enabled/default" ]; then
     print_message "Removing default Nginx site to avoid conflicts..."
     rm -f /etc/nginx/sites-enabled/default
   fi
-  
+
   cat <<EOF >"$NGINX_CONF"
 server {
     listen 80 default_server;
     server_name miniman.local 192.168.50.1;
+
+    # Increase timeouts for slow connections
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_read_timeout 300s;
 
     location / {
         proxy_pass http://127.0.0.1:$HTTP_PORT;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Ensure this path exactly matches your application's static files structure
+    location /static/ {
+        alias /opt/miniman/app/static/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
     }
 }
 EOF
@@ -360,7 +374,7 @@ EOF
   if [ ! -f "/etc/nginx/sites-enabled/miniman" ]; then
     ln -s "$NGINX_CONF" "/etc/nginx/sites-enabled/"
   fi
-  
+
   # Test and restart Nginx
   nginx -t && systemctl restart nginx || print_warning "Nginx configuration test failed."
 fi
@@ -390,7 +404,7 @@ fi
 RESET_SCRIPT="/usr/local/bin/system-reset"
 if [ ! -f "$RESET_SCRIPT" ]; then
   print_message "Creating system reset functionality..."
-  
+
   # Create the reset script
   cat <<EOF >"$RESET_SCRIPT"
 #!/bin/bash
@@ -429,7 +443,7 @@ print_message "Performing final checks and fixes..."
 # Check if miniman service is running correctly
 if ! systemctl is-active --quiet miniman.service; then
   print_warning "miniman service is not running correctly. Attempting to fix common issues..."
-  
+
   # Create a systemd tempfiles configuration for miniman
   cat <<EOF >/etc/tmpfiles.d/miniman.conf
 d /var/run/miniman 0755 www-data www-data -
@@ -440,7 +454,7 @@ EOF
 
   # Restart the service
   systemctl restart miniman.service
-  
+
   print_message "If the service still fails, check logs with: journalctl -u miniman.service"
 fi
 

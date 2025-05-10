@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="lkh">
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/provision_mini.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provision_mini.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/provisioning_manual.md" beforeDir="false" afterPath="$PROJECT_DIR$/provisioning_manual.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,6 +15,11 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GoLibraries">
@@ -31,11 +37,12 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.go.formatter.settings.were.checked": "true",
     "RunOnceActivity.go.migrated.go.modules.settings": "true",
     "SHELLCHECK.PATH": "C:\\Users\\azzam\\AppData\\Roaming\\JetBrains\\IntelliJIdea2025.1\\plugins\\Shell Script\\shellcheck.exe",
     "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "master",
+    "git-widget-placeholder": "dev",
     "go.import.settings.migrated": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "//wsl.localhost/Ubuntu-24.04/home/dev/projects",
@@ -59,6 +66,7 @@
       <option name="presentableId" value="Default" />
       <updated>1746722434982</updated>
       <workItem from="1746722450675" duration="1557000" />
+      <workItem from="1746898190448" duration="2076000" />
     </task>
     <task id="LOCAL-00001" summary="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated.">
       <option name="closed" value="true" />
@@ -92,18 +100,38 @@
       <option name="project" value="LOCAL" />
       <updated>1746889391909</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues.">
+      <option name="closed" value="true" />
+      <created>1746891249103</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1746891249103</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated." />
     <MESSAGE value="Refactor iptables-persistent installation process&#10;&#10;Separate iptables-persistent installation to ensure stronger prompt suppression and prevent user interaction. Added steps to generate default rules files and reinforced noninteractive settings for seamless deployment." />
     <MESSAGE value="Replace iptables-persistent with custom persistence setup&#10;&#10;Switched from iptables-persistent package to a custom solution for managing iptables persistence. Created a systemd service to restore rules at boot and adjusted the script to save the current rules accordingly. This change simplifies the setup and avoids dependency on iptables-persistent." />
     <MESSAGE value="lkh" />
-    <option name="LAST_COMMIT_MESSAGE" value="lkh" />
+    <MESSAGE value="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues." />
+    <option name="LAST_COMMIT_MESSAGE" value="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
