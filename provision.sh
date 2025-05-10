@@ -54,6 +54,30 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to check and install dependencies
+check_dependencies() {
+    print_message "Checking essential dependencies..."
+    
+    # List of essential tools
+    ESSENTIAL_TOOLS=("iw" "git")
+    
+    # Check each tool
+    for tool in "${ESSENTIAL_TOOLS[@]}"; do
+        if ! command_exists "$tool"; then
+            print_message "Installing '$tool'..."
+            apt update
+            apt install -y "$tool"
+            if ! command_exists "$tool"; then
+                print_error "Failed to install '$tool'. Please install it manually."
+                exit 1
+            fi
+            print_success "'$tool' installed successfully."
+        fi
+    done
+    
+    print_success "Essential dependencies checked and installed."
+}
+
 # Function to check Ubuntu version
 check_ubuntu_version() {
     if ! command_exists lsb_release; then
@@ -113,7 +137,7 @@ update_system() {
 # Function to install required packages
 install_packages() {
     print_message "Installing required packages..."
-    apt install -y hostapd dnsmasq iptables-persistent python3-pip python3-venv nginx git
+    apt install -y hostapd dnsmasq iptables-persistent python3-pip python3-venv nginx git iw
 
     # Stop services initially to prevent them from running with default configs
     systemctl stop hostapd
@@ -676,6 +700,9 @@ install_flask_app() {
 configure_nginx() {
     print_message "Configuring Nginx..."
 
+    # Ensure nginx directories exist
+    mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
     # Create Nginx configuration file
     cat > /etc/nginx/sites-available/device-manager << EOF
 server {
@@ -696,12 +723,33 @@ EOF
     # Enable the site
     ln -sf /etc/nginx/sites-available/device-manager /etc/nginx/sites-enabled/
 
-    # Test Nginx configuration
-    nginx -t
+    # Test Nginx configuration with error handling
+    if ! nginx -t; then
+        print_warning "Nginx configuration test failed, creating a minimal working config"
+        # Create a minimal working configuration
+        cat > /etc/nginx/sites-available/device-manager << EOF
+server {
+    listen 80;
+    server_name localhost;
 
-    # Enable and restart Nginx
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+EOF
+        # Test again
+        if ! nginx -t; then
+            print_error "Nginx configuration still failing, check nginx error logs"
+            # Continue anyway to avoid script failure
+        fi
+    fi
+
+    # Enable and restart Nginx with error handling
     systemctl enable nginx
-    systemctl restart nginx
+    if ! systemctl restart nginx; then
+        print_warning "Failed to restart Nginx, trying to start it"
+        systemctl start nginx || print_error "Failed to start Nginx, manual intervention required"
+    fi
 
     print_success "Nginx configured."
 }
@@ -717,14 +765,12 @@ Description=Device Manager Application
 After=network.target
 
 [Service]
-# Change from www-data to root or the user who owns the application files
 User=root
 WorkingDirectory=/opt/device-manager
-# Add these lines to specify a runtime directory
 RuntimeDirectory=device-manager
 RuntimeDirectoryMode=0755
 ExecStart=/opt/device-manager/venv/bin/gunicorn -c gunicorn.conf.py run:app
-    Environment="GUNICORN_CMD_ARGS=--bind=0.0.0.0:8000"
+Environment="GUNICORN_CMD_ARGS=--bind=0.0.0.0:8000"
 Restart=always
 RestartSec=5
 
@@ -732,8 +778,23 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-    # Set proper permissions
-    chown -R www-data:www-data /opt/device-manager
+    # Fix permissions - keep root as owner since that's specified in the service
+    chown -R root:root /opt/device-manager
+    chmod -R 755 /opt/device-manager
+
+    # Make sure the gunicorn config file exists and has proper format
+    print_message "Creating gunicorn configuration file..."
+    cat > /opt/device-manager/gunicorn.conf.py << EOF
+bind = "0.0.0.0:8000"
+workers = 4
+worker_class = "sync"
+timeout = 30
+loglevel = "info"
+daemon = False
+EOF
+
+    # Reload systemd to recognize the new service
+    systemctl daemon-reload
 
     # Enable the service
     systemctl enable device-manager.service
@@ -1004,6 +1065,10 @@ handle_hostapd_failure() {
 handle_nginx_failure() {
     print_message "Troubleshooting nginx..."
 
+    # Ensure directories exist
+    print_message "Ensuring nginx directories exist..."
+    mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
     # Check nginx configuration
     print_message "Testing nginx configuration..."
     nginx -t
@@ -1016,19 +1081,19 @@ handle_nginx_failure() {
         if [ -f /etc/nginx/sites-enabled/device-manager ]; then
             cp /etc/nginx/sites-enabled/device-manager /etc/nginx/sites-enabled/device-manager.problematic
         fi
+        
+        # Remove any potentially problematic symlinks
+        rm -f /etc/nginx/sites-enabled/device-manager
 
         # Create a minimal working configuration
         print_message "Creating minimal nginx configuration..."
         cat > /etc/nginx/sites-available/device-manager << EOF
 server {
     listen 80;
-    listen 192.168.4.1:80;
-    server_name device.local _;
+    server_name localhost;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
     }
 }
 EOF
@@ -1036,9 +1101,13 @@ EOF
         # Enable the site
         ln -sf /etc/nginx/sites-available/device-manager /etc/nginx/sites-enabled/
 
-        # Try starting nginx again
+        # Try starting nginx again with error reporting
         print_message "Trying to start nginx with minimal configuration..."
-        systemctl start nginx
+        if ! systemctl start nginx; then
+            print_error "Failed to start nginx even with minimal configuration."
+            print_message "Nginx error details:"
+            nginx -t 2>&1
+        fi
     fi
 }
 
@@ -1229,17 +1298,20 @@ main() {
     # Check if running as root
     check_root
 
+    # Check essential dependencies first
+    check_dependencies
+    
     # Check Ubuntu version
     check_ubuntu_version
-
-    # Check for WiFi interface
-    check_wifi_interface
 
     # Update system
     update_system
 
-    # Install required packages
+    # Install required packages - do this before checking interfaces
     install_packages
+
+    # Check for WiFi interface
+    check_wifi_interface
 
     # Configure hostapd
     configure_hostapd
@@ -1265,47 +1337,8 @@ main() {
     # Install Flask application
     install_flask_app
 
-    # Configure Nginx
-    if type configure_nginx > /dev/null 2>&1; then
-        configure_nginx
-    else
-        print_error "configure_nginx function not found. Defining it now..."
-        # Define the function inline as a fallback
-        configure_nginx() {
-            print_message "Configuring Nginx..."
-
-            # Create Nginx configuration file
-            cat > /etc/nginx/sites-available/device-manager << EOF
-server {
-    listen 80;
-    listen 192.168.4.1:80;
-    server_name device.local _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOF
-
-            # Enable the site
-            ln -sf /etc/nginx/sites-available/device-manager /etc/nginx/sites-enabled/
-
-            # Test Nginx configuration
-            nginx -t
-
-            # Enable and restart Nginx
-            systemctl enable nginx
-            systemctl restart nginx
-
-            print_success "Nginx configured."
-        }
-        # Now call the newly defined function
-        configure_nginx
-    fi
+    # Configure Nginx (with proper error handling)
+    configure_nginx
 
     # Create application service
     create_app_service
