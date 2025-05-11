@@ -10,6 +10,7 @@
     </div>
     <div class="col-auto">
         <form action="{{ url_for('network.refresh_interfaces') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary">
                 <i class="bi bi-arrow-repeat"></i> Refresh Interfaces
             </button>
@@ -49,7 +50,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-8 mb-3">
         <div class="card shadow-sm">
             <div class="card-header">
@@ -97,6 +98,7 @@
                                             <i class="bi bi-info-circle"></i> Status
                                         </button>
                                         <form action="{{ url_for('network.scan_network', id=interface.id) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-outline-secondary">
                                                 <i class="bi bi-search"></i> Scan
                                             </button>
@@ -151,10 +153,10 @@
         // Show the modal
         const statusModal = new bootstrap.Modal(document.getElementById('interfaceStatusModal'));
         statusModal.show();
-        
+
         // Get the content container
         const contentContainer = document.getElementById('interfaceStatusContent');
-        
+
         // Make AJAX request to get interface status
         fetch(`/network/status/${interfaceId}`)
             .then(response => response.json())
@@ -163,7 +165,7 @@
                 let html = '<div class="table-responsive">';
                 html += '<table class="table table-sm">';
                 html += '<tbody>';
-                
+
                 // Add status information
                 html += `<tr><th>Name</th><td>${data.name}</td></tr>`;
                 html += `<tr><th>Status</th><td>${data.is_up ? '<span class="badge bg-success">Up</span>' : '<span class="badge bg-danger">Down</span>'}</td></tr>`;
@@ -171,16 +173,16 @@
                 html += `<tr><th>Netmask</th><td>${data.netmask || 'Not configured'}</td></tr>`;
                 html += `<tr><th>Gateway</th><td>${data.gateway || 'Not configured'}</td></tr>`;
                 html += `<tr><th>MAC Address</th><td>${data.mac_address || 'Unknown'}</td></tr>`;
-                
+
                 // Add statistics
                 html += `<tr><th>RX Bytes</th><td>${formatBytes(data.rx_bytes)}</td></tr>`;
                 html += `<tr><th>TX Bytes</th><td>${formatBytes(data.tx_bytes)}</td></tr>`;
                 html += `<tr><th>RX Packets</th><td>${data.rx_packets.toLocaleString()}</td></tr>`;
                 html += `<tr><th>TX Packets</th><td>${data.tx_packets.toLocaleString()}</td></tr>`;
                 html += `<tr><th>Errors</th><td>${data.errors}</td></tr>`;
-                
+
                 html += '</tbody></table></div>';
-                
+
                 // Update the content
                 contentContainer.innerHTML = html;
             })
@@ -188,17 +190,17 @@
                 contentContainer.innerHTML = `<div class="alert alert-danger">Error loading interface status: ${error.message}</div>`;
             });
     }
-    
+
     // Helper function to format bytes
     function formatBytes(bytes, decimals = 2) {
         if (bytes === 0) return '0 Bytes';
-        
+
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        
+
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        
+
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     }
 </script>
