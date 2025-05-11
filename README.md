@@ -31,7 +31,7 @@ chmod +x provisioning_script.sh
 sudo ./provisioning_script.sh
 ```
 1. Once complete, connect to the WiFi network "miniman" with password "123456789"
-2. Access the web interface at [http://192.168.50.1](http://192.168.50.1)
+2. Access the web interface at [http://192.168.50.1](http://192.168.50.1) or simply type [http://mini.man](http://mini.man) in your browser
 
 ### Default Credentials
 - **WiFi Network**: miniman
@@ -60,7 +60,7 @@ The [Provisioning Manual](provisioning_manual.md) provides comprehensive instruc
 ## Usage Guide
 ### Network Management
 1. Connect to the "miniman" WiFi network
-2. Navigate to [http://192.168.50.1](http://192.168.50.1) in your browser
+2. Navigate to [http://192.168.50.1](http://192.168.50.1) or [http://mini.man](http://mini.man) in your browser
 3. Log in with your credentials
 4. Use the dashboard to monitor system status
 5. Configure network interfaces through the Network menu

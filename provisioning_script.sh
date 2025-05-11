@@ -181,6 +181,8 @@ dhcp-range=192.168.50.10,192.168.50.100,12h
 dhcp-option=3,192.168.50.1
 # Set DNS server address
 dhcp-option=6,192.168.50.1
+# Add custom domain name
+address=/mini.man/192.168.50.1
 EOF
 fi
 
@@ -213,7 +215,7 @@ fi
 # Clone repository if provided and directory is empty
 if [ -n "$GIT_REPO" ] && [ -z "$(ls -A $APP_DIR)" ]; then
   print_message "Cloning application repository..."
-  GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch multi-env "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
 elif [ -n "$GIT_REPO" ] && [ -d "$APP_DIR/.git" ]; then
   print_message "Updating existing repository..."
   cd "$APP_DIR"
@@ -228,7 +230,7 @@ elif [ -n "$GIT_REPO" ]; then
       print_message "Backing up existing directory..."
       mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
       mkdir -p "$APP_DIR"
-      GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+      GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch multi-env "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
       ;;
     p|P)
       if [ -d "$APP_DIR/.git" ]; then
@@ -241,7 +243,7 @@ elif [ -n "$GIT_REPO" ]; then
         if [[ "$BACKUP_REPLACE" =~ ^[Yy]$ ]]; then
           mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
           mkdir -p "$APP_DIR"
-          GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+          GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch multi-env "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
         fi
       fi
       ;;
@@ -402,7 +404,7 @@ if [ ! -f "$NGINX_CONF" ]; then
   cat <<EOF >"$NGINX_CONF"
 server {
     listen 80 default_server;
-    server_name miniman.local 192.168.50.1;
+    server_name miniman.local mini.man 192.168.50.1;
 
     # Increase timeouts for slow connections
     proxy_connect_timeout 300s;
@@ -527,7 +529,7 @@ print_success "
    - HTTP traffic on port 80 is redirected to port $HTTP_PORT
 
 👉 Connect to the WiFi network '$SSID' with password '$PASSPHRASE'
-   Then access the web interface at http://192.168.50.1
+   Then access the web interface at http://192.168.50.1 or http://mini.man
 
 📝 Default credentials:
    - Username: admin

@@ -64,7 +64,7 @@ sudo ./provisioning_script.sh
 After the script completes, verify that:
 - The WiFi access point is active and broadcasting with SSID "miniman"
 - You can connect to the WiFi network using the password "123456789"
-- The web interface is accessible at [http://192.168.50.1](http://192.168.50.1)
+- The web interface is accessible at [http://192.168.50.1](http://192.168.50.1) or [http://mini.man](http://mini.man)
 
 ## Script Functionality
 The provisioning script performs the following tasks:
@@ -135,6 +135,20 @@ Alternatively, after installation:
 1. Edit the systemd-networkd configuration: `/etc/systemd/network/10-wlan0.network`
 2. Edit the dnsmasq configuration: `/etc/dnsmasq.conf`
 3. Restart services: `sudo systemctl restart systemd-networkd dnsmasq`
+
+### Custom Domain Configuration
+The Mini Manager is configured with a custom domain name `mini.man` that resolves to the device's IP address (192.168.50.1). This allows users to access the web interface by typing `http://mini.man` in their browser instead of the IP address.
+
+This is implemented through:
+1. A DNS entry in dnsmasq configuration: `address=/mini.man/192.168.50.1`
+2. The Nginx server configuration includes `mini.man` in the `server_name` directive
+
+To modify or add additional custom domains:
+1. Edit the dnsmasq configuration: `/etc/dnsmasq.conf`
+2. Add a line in the format: `address=/your.domain/192.168.50.1`
+3. Edit the Nginx configuration: `/etc/nginx/sites-available/miniman`
+4. Add your domain to the `server_name` directive
+5. Restart services: `sudo systemctl restart dnsmasq nginx`
 
 ### Application Customization
 To customize the application:
@@ -252,7 +266,7 @@ The script is designed to be idempotent and can be run multiple times. When reru
 After successful provisioning, complete these important steps:
 ### 1. Change Default Credentials
 1. Connect to the WiFi network "miniman" with password "123456789"
-2. Access the web interface at [http://192.168.50.1](http://192.168.50.1)
+2. Access the web interface at [http://192.168.50.1](http://192.168.50.1) or [http://mini.man](http://mini.man)
 3. Log in with default credentials (admin/admin)
 4. Change the default admin password immediately
 
