@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="lkh">
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Remove legacy provision.sh script and improve static asset setup.&#10;&#10;The provision.sh script was removed as it is obsolete, with its functionality either deprecated or replaced by better methods, reducing redundancy and maintenance burden. Additionally, enhanced the provisioning process to download and verify complete versions of static assets like Bootstrap, Bootstrap Icons, and Chart.js, ensuring reliability and consistency.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/provision_mini.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provision_mini.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/architecture.md" beforeDir="false" afterPath="$PROJECT_DIR$/architecture.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/provision_mini.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provisioning_script.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/provisioning_manual.md" beforeDir="false" afterPath="$PROJECT_DIR$/provisioning_manual.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,8 +16,25 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;baderrami&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/baderrami/miniman.git&quot;,
+    &quot;accountId&quot;: &quot;a2796ac7-0942-4a38-9c10-6e9f19a596a6&quot;
+  }
+}</component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="true" />
   </component>
@@ -27,30 +46,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "SHELLCHECK.PATH": "C:\\Users\\azzam\\AppData\\Roaming\\JetBrains\\IntelliJIdea2025.1\\plugins\\Shell Script\\shellcheck.exe",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "master",
-    "go.import.settings.migrated": "true",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "//wsl.localhost/Ubuntu-24.04/home/dev/projects",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.0",
-    "show.migrate.to.gradle.popup": "false",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;SHELLCHECK.PATH&quot;: &quot;C:\\Users\\azzam\\AppData\\Roaming\\JetBrains\\IntelliJIdea2025.1\\plugins\\Shell Script\\shellcheck.exe&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;//wsl.localhost/Ubuntu-24.04/home/dev/projects&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="" />
@@ -59,6 +79,13 @@
       <option name="presentableId" value="Default" />
       <updated>1746722434982</updated>
       <workItem from="1746722450675" duration="1557000" />
+      <workItem from="1746898190448" duration="2076000" />
+      <workItem from="1746952764169" duration="368000" />
+      <workItem from="1746953162193" duration="1203000" />
+      <workItem from="1746954388408" duration="207000" />
+      <workItem from="1746954611445" duration="31000" />
+      <workItem from="1746954655621" duration="14000" />
+      <workItem from="1746954833280" duration="2215000" />
     </task>
     <task id="LOCAL-00001" summary="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated.">
       <option name="closed" value="true" />
@@ -92,18 +119,65 @@
       <option name="project" value="LOCAL" />
       <updated>1746889391909</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues.">
+      <option name="closed" value="true" />
+      <created>1746891249103</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1746891249103</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Add local static assets for Bootstrap and Chart.js  &#10;&#10;Replaced external CDN links with locally served Bootstrap, Bootstrap Icons, and Chart.js files. Updated base.html to reference these local assets, improving application performance and reliability.">
+      <option name="closed" value="true" />
+      <created>1746922647232</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1746922647232</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Remove legacy provision.sh script&#10;&#10;The provision.sh script was removed as it is no longer needed. The functionality it provided has either been deprecated or replaced by more efficient methods, reducing redundancy and maintenance overhead.">
+      <option name="closed" value="true" />
+      <created>1746953746075</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1746953746075</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Remove legacy provision.sh script and improve static asset setup.&#10;&#10;The provision.sh script was removed as it is obsolete, with its functionality either deprecated or replaced by better methods, reducing redundancy and maintenance burden. Additionally, enhanced the provisioning process to download and verify complete versions of static assets like Bootstrap, Bootstrap Icons, and Chart.js, ensuring reliability and consistency.">
+      <option name="closed" value="true" />
+      <created>1746956322938</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1746956322938</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated." />
     <MESSAGE value="Refactor iptables-persistent installation process&#10;&#10;Separate iptables-persistent installation to ensure stronger prompt suppression and prevent user interaction. Added steps to generate default rules files and reinforced noninteractive settings for seamless deployment." />
     <MESSAGE value="Replace iptables-persistent with custom persistence setup&#10;&#10;Switched from iptables-persistent package to a custom solution for managing iptables persistence. Created a systemd service to restore rules at boot and adjusted the script to save the current rules accordingly. This change simplifies the setup and avoids dependency on iptables-persistent." />
     <MESSAGE value="lkh" />
-    <option name="LAST_COMMIT_MESSAGE" value="lkh" />
+    <MESSAGE value="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues." />
+    <MESSAGE value="Add local static assets for Bootstrap and Chart.js  &#10;&#10;Replaced external CDN links with locally served Bootstrap, Bootstrap Icons, and Chart.js files. Updated base.html to reference these local assets, improving application performance and reliability." />
+    <MESSAGE value="Remove legacy provision.sh script&#10;&#10;The provision.sh script was removed as it is no longer needed. The functionality it provided has either been deprecated or replaced by more efficient methods, reducing redundancy and maintenance overhead." />
+    <MESSAGE value="Remove legacy provision.sh script and improve static asset setup.&#10;&#10;The provision.sh script was removed as it is obsolete, with its functionality either deprecated or replaced by better methods, reducing redundancy and maintenance burden. Additionally, enhanced the provisioning process to download and verify complete versions of static assets like Bootstrap, Bootstrap Icons, and Chart.js, ensuring reliability and consistency." />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove legacy provision.sh script and improve static asset setup.&#10;&#10;The provision.sh script was removed as it is obsolete, with its functionality either deprecated or replaced by better methods, reducing redundancy and maintenance burden. Additionally, enhanced the provisioning process to download and verify complete versions of static assets like Bootstrap, Bootstrap Icons, and Chart.js, ensuring reliability and consistency." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

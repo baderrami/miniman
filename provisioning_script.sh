@@ -142,11 +142,11 @@ fi
 print_message "Checking for DNS port conflicts..."
 if lsof -i :53 | grep -q "systemd-r"; then
   print_message "Detected systemd-resolved using port 53, reconfiguring..."
-  
+
   # Disable systemd-resolved service
   systemctl stop systemd-resolved
   systemctl disable systemd-resolved
-  
+
   # Fix resolv.conf if it's a symlink to systemd-resolved
   if [ -L /etc/resolv.conf ]; then
     print_message "Fixing resolv.conf configuration..."
@@ -222,7 +222,7 @@ elif [ -n "$GIT_REPO" ]; then
   print_warning "Directory $APP_DIR exists and is not empty."
   read -p "What would you like to do? [s]kip, [b]ackup and replace, [p]ull updates: " APP_DIR_ACTION
   APP_DIR_ACTION=${APP_DIR_ACTION:-s}
-  
+
   case "$APP_DIR_ACTION" in
     b|B)
       print_message "Backing up existing directory..."
@@ -256,7 +256,7 @@ if [ ! -d "$APP_DIR/venv" ]; then
   print_message "Creating Python virtual environment..."
   cd "$APP_DIR"
   python3 -m venv venv
-  
+
   # Install requirements if requirements.txt exists
   if [ -f "$APP_DIR/requirements.txt" ]; then
     print_message "Installing Python dependencies..."
@@ -265,6 +265,62 @@ if [ ! -d "$APP_DIR/venv" ]; then
     deactivate
   fi
 fi
+
+# Ensure all static resources are available locally
+print_message "Ensuring all static resources are available locally..."
+
+# Create fonts directory if it doesn't exist
+mkdir -p "$APP_DIR/app/static/fonts"
+
+# Download Bootstrap Icons font files if they don't exist or are placeholders
+if [ ! -f "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || [ ! -s "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || grep -q "placeholder" "$APP_DIR/app/static/fonts/bootstrap-icons.woff2"; then
+  print_message "Downloading Bootstrap Icons font files..."
+  curl -s -L -o "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff2"
+  curl -s -L -o "$APP_DIR/app/static/fonts/bootstrap-icons.woff" "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff"
+
+  # Update CSS to reference local font files if needed
+  if ! grep -q "font-face" "$APP_DIR/app/static/css/bootstrap-icons.css"; then
+    print_message "Updating bootstrap-icons.css to use local font files..."
+    sed -i '1i @font-face {\n  font-family: "bootstrap-icons";\n  src: url("../fonts/bootstrap-icons.woff2") format("woff2"),\n       url("../fonts/bootstrap-icons.woff") format("woff");\n}\n' "$APP_DIR/app/static/css/bootstrap-icons.css"
+
+    # Add font-family to the CSS selectors if not already present
+    if ! grep -q "font-family: \"bootstrap-icons\"" "$APP_DIR/app/static/css/bootstrap-icons.css"; then
+      sed -i 's/\.bi::before,/\.bi::before,/; s/{/{\n  font-family: "bootstrap-icons";/' "$APP_DIR/app/static/css/bootstrap-icons.css"
+    fi
+  fi
+fi
+
+# Download full versions of required static files
+print_message "Downloading full versions of required static files..."
+
+# Bootstrap CSS
+print_message "Downloading Bootstrap CSS..."
+curl -s -L -o "$APP_DIR/app/static/css/bootstrap.min.css" "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+
+# Bootstrap JS
+print_message "Downloading Bootstrap JS..."
+curl -s -L -o "$APP_DIR/app/static/js/bootstrap.bundle.min.js" "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+
+# Chart.js
+print_message "Downloading Chart.js..."
+curl -s -L -o "$APP_DIR/app/static/js/chart.min.js" "https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"
+
+# Ensure all required static files exist and have content
+REQUIRED_FILES=(
+  "css/bootstrap.min.css"
+  "js/bootstrap.bundle.min.js"
+  "js/chart.min.js"
+  "fonts/bootstrap-icons.woff"
+  "fonts/bootstrap-icons.woff2"
+)
+
+for file in "${REQUIRED_FILES[@]}"; do
+  if [ ! -f "$APP_DIR/app/static/$file" ] || [ ! -s "$APP_DIR/app/static/$file" ]; then
+    print_error "Missing or empty required static file: $file"
+  else
+    print_success "Verified static file: $file"
+  fi
+done
 
 # Initialize database
 if [ -f "$APP_DIR/run.py" ]; then
@@ -280,13 +336,13 @@ fi
 APP_SERVICE="/etc/systemd/system/miniman.service"
 if [ ! -f "$APP_SERVICE" ]; then
   print_message "Creating application service..."
-  
+
   # Create runtime directory for gunicorn with proper permissions
   print_message "Creating runtime directory for gunicorn..."
   mkdir -p /var/run/miniman
   chown www-data:www-data /var/run/miniman
   chmod 755 /var/run/miniman
-  
+
   cat <<EOF >"$APP_SERVICE"
 [Unit]
 Description=Mini Manager Application
@@ -303,6 +359,7 @@ RestartSec=5
 # Set more environment variables
 Environment="PYTHONUNBUFFERED=1"
 Environment="PYTHONIOENCODING=UTF-8"
+Environment="FLASK_CONFIG=offline"
 
 [Install]
 WantedBy=multi-user.target
@@ -320,12 +377,12 @@ EOF
   print_message "Setting proper permissions for application directory..."
   chown -R www-data:www-data "$APP_DIR"
   chmod -R 755 "$APP_DIR"
-  
+
   # Ensure instance directory exists with proper permissions
   mkdir -p "$APP_DIR/instance"
   chown -R www-data:www-data "$APP_DIR/instance"
   chmod -R 755 "$APP_DIR/instance"
-  
+
   # Enable and start the service
   systemctl enable miniman.service
   systemctl start miniman.service || print_warning "Failed to start application service."
@@ -335,23 +392,37 @@ fi
 NGINX_CONF="/etc/nginx/sites-available/miniman"
 if [ ! -f "$NGINX_CONF" ]; then
   print_message "Setting up Nginx configuration..."
-  
+
   # First remove the default site if it exists to avoid conflicts
   if [ -f "/etc/nginx/sites-enabled/default" ]; then
     print_message "Removing default Nginx site to avoid conflicts..."
     rm -f /etc/nginx/sites-enabled/default
   fi
-  
+
   cat <<EOF >"$NGINX_CONF"
 server {
     listen 80 default_server;
     server_name miniman.local 192.168.50.1;
+
+    # Increase timeouts for slow connections
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_read_timeout 300s;
 
     location / {
         proxy_pass http://127.0.0.1:$HTTP_PORT;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Ensure this path exactly matches your application's static files structure
+    location /static/ {
+        alias /opt/miniman/app/static/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
     }
 }
 EOF
@@ -360,7 +431,7 @@ EOF
   if [ ! -f "/etc/nginx/sites-enabled/miniman" ]; then
     ln -s "$NGINX_CONF" "/etc/nginx/sites-enabled/"
   fi
-  
+
   # Test and restart Nginx
   nginx -t && systemctl restart nginx || print_warning "Nginx configuration test failed."
 fi
@@ -390,7 +461,7 @@ fi
 RESET_SCRIPT="/usr/local/bin/system-reset"
 if [ ! -f "$RESET_SCRIPT" ]; then
   print_message "Creating system reset functionality..."
-  
+
   # Create the reset script
   cat <<EOF >"$RESET_SCRIPT"
 #!/bin/bash
@@ -429,7 +500,7 @@ print_message "Performing final checks and fixes..."
 # Check if miniman service is running correctly
 if ! systemctl is-active --quiet miniman.service; then
   print_warning "miniman service is not running correctly. Attempting to fix common issues..."
-  
+
   # Create a systemd tempfiles configuration for miniman
   cat <<EOF >/etc/tmpfiles.d/miniman.conf
 d /var/run/miniman 0755 www-data www-data -
@@ -440,7 +511,7 @@ EOF
 
   # Restart the service
   systemctl restart miniman.service
-  
+
   print_message "If the service still fails, check logs with: journalctl -u miniman.service"
 fi
 
