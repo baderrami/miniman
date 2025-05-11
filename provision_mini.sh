@@ -272,8 +272,8 @@ print_message "Ensuring all static resources are available locally..."
 # Create fonts directory if it doesn't exist
 mkdir -p "$APP_DIR/app/static/fonts"
 
-# Download Bootstrap Icons font files if they don't exist
-if [ ! -f "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || [ ! -s "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ]; then
+# Download Bootstrap Icons font files if they don't exist or are placeholders
+if [ ! -f "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || [ ! -s "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || grep -q "placeholder" "$APP_DIR/app/static/fonts/bootstrap-icons.woff2"; then
   print_message "Downloading Bootstrap Icons font files..."
   curl -s -L -o "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff2"
   curl -s -L -o "$APP_DIR/app/static/fonts/bootstrap-icons.woff" "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff"
@@ -290,16 +290,35 @@ if [ ! -f "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || [ ! -s "$APP_DI
   fi
 fi
 
-# Ensure all other required static files exist
+# Download full versions of required static files
+print_message "Downloading full versions of required static files..."
+
+# Bootstrap CSS
+print_message "Downloading Bootstrap CSS..."
+curl -s -L -o "$APP_DIR/app/static/css/bootstrap.min.css" "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+
+# Bootstrap JS
+print_message "Downloading Bootstrap JS..."
+curl -s -L -o "$APP_DIR/app/static/js/bootstrap.bundle.min.js" "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+
+# Chart.js
+print_message "Downloading Chart.js..."
+curl -s -L -o "$APP_DIR/app/static/js/chart.min.js" "https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"
+
+# Ensure all required static files exist and have content
 REQUIRED_FILES=(
   "css/bootstrap.min.css"
   "js/bootstrap.bundle.min.js"
   "js/chart.min.js"
+  "fonts/bootstrap-icons.woff"
+  "fonts/bootstrap-icons.woff2"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
-  if [ ! -f "$APP_DIR/app/static/$file" ]; then
-    print_warning "Missing required static file: $file"
+  if [ ! -f "$APP_DIR/app/static/$file" ] || [ ! -s "$APP_DIR/app/static/$file" ]; then
+    print_error "Missing or empty required static file: $file"
+  else
+    print_success "Verified static file: $file"
   fi
 done
 

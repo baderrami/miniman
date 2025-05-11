@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Add local static assets for Bootstrap and Chart.js  &#10;&#10;Replaced external CDN links with locally served Bootstrap, Bootstrap Icons, and Chart.js files. Updated base.html to reference these local assets, improving application performance and reliability.">
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Remove legacy provision.sh script&#10;&#10;The provision.sh script was removed as it is no longer needed. The functionality it provided has either been deprecated or replaced by more efficient methods, reducing redundancy and maintenance overhead.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/provision.sh" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/provision_mini.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provision_mini.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -22,6 +21,18 @@
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;baderrami&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/baderrami/miniman.git&quot;,
+    &quot;accountId&quot;: &quot;a2796ac7-0942-4a38-9c10-6e9f19a596a6&quot;
+  }
+}</component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="true" />
   </component>
@@ -68,6 +79,11 @@
       <workItem from="1746722450675" duration="1557000" />
       <workItem from="1746898190448" duration="2076000" />
       <workItem from="1746952764169" duration="368000" />
+      <workItem from="1746953162193" duration="1203000" />
+      <workItem from="1746954388408" duration="207000" />
+      <workItem from="1746954611445" duration="31000" />
+      <workItem from="1746954655621" duration="14000" />
+      <workItem from="1746954833280" duration="1263000" />
     </task>
     <task id="LOCAL-00001" summary="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated.">
       <option name="closed" value="true" />
@@ -117,7 +133,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746922647232</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Remove legacy provision.sh script&#10;&#10;The provision.sh script was removed as it is no longer needed. The functionality it provided has either been deprecated or replaced by more efficient methods, reducing redundancy and maintenance overhead.">
+      <option name="closed" value="true" />
+      <created>1746953746075</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1746953746075</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -141,7 +165,8 @@
     <MESSAGE value="lkh" />
     <MESSAGE value="Set up runtime directories and enhance service configuration&#10;&#10;Added proper runtime directory setup for Gunicorn to avoid permission issues. Enhanced Nginx configuration with default server and improved service environment variable settings. Included final checks to verify service status and handle common issues." />
     <MESSAGE value="Add local static assets for Bootstrap and Chart.js  &#10;&#10;Replaced external CDN links with locally served Bootstrap, Bootstrap Icons, and Chart.js files. Updated base.html to reference these local assets, improving application performance and reliability." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add local static assets for Bootstrap and Chart.js  &#10;&#10;Replaced external CDN links with locally served Bootstrap, Bootstrap Icons, and Chart.js files. Updated base.html to reference these local assets, improving application performance and reliability." />
+    <MESSAGE value="Remove legacy provision.sh script&#10;&#10;The provision.sh script was removed as it is no longer needed. The functionality it provided has either been deprecated or replaced by more efficient methods, reducing redundancy and maintenance overhead." />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove legacy provision.sh script&#10;&#10;The provision.sh script was removed as it is no longer needed. The functionality it provided has either been deprecated or replaced by more efficient methods, reducing redundancy and maintenance overhead." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
