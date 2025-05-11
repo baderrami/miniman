@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Configure Network Interface - Miniman{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="h3"><i class="bi bi-gear"></i> Configure Network Interface</h1>
+        <p class="text-muted">Configure settings for {{ interface.name }}</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('network.network') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Network
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-ethernet"></i> Interface Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('network.configure_network', id=interface.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Interface Name</label>
+                        <input type="text" class="form-control" value="{{ interface.name }}" readonly>
+                        <div class="form-text">The system name of this network interface</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
+                               {% if interface.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">Active</label>
+                        <div class="form-text">Enable or disable this network interface</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_dhcp" name="is_dhcp" 
+                               {% if interface.is_dhcp %}checked{% endif %} onchange="toggleStaticFields()">
+                        <label class="form-check-label" for="is_dhcp">Use DHCP</label>
+                        <div class="form-text">Automatically obtain IP address and network settings</div>
+                    </div>
+                    
+                    <div id="static-fields" {% if interface.is_dhcp %}style="display: none;"{% endif %}>
+                        <div class="mb-3">
+                            <label for="ip_address" class="form-label">IP Address</label>
+                            <input type="text" class="form-control" id="ip_address" name="ip_address" 
+                                   value="{{ interface.ip_address or '' }}" placeholder="192.168.1.100">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="netmask" class="form-label">Subnet Mask</label>
+                            <input type="text" class="form-control" id="netmask" name="netmask" 
+                                   value="{{ interface.netmask or '' }}" placeholder="255.255.255.0">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="gateway" class="form-label">Default Gateway</label>
+                            <input type="text" class="form-control" id="gateway" name="gateway" 
+                                   value="{{ interface.gateway or '' }}" placeholder="192.168.1.1">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="dns_servers" class="form-label">DNS Servers</label>
+                            <input type="text" class="form-control" id="dns_servers" name="dns_servers" 
+                                   value="{{ interface.dns_servers or '' }}" placeholder="8.8.8.8, 8.8.4.4">
+                            <div class="form-text">Comma-separated list of DNS servers</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('network.network') }}" class="btn btn-secondary me-md-2">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleStaticFields() {
+        const isDhcp = document.getElementById('is_dhcp').checked;
+        const staticFields = document.getElementById('static-fields');
+        
+        if (isDhcp) {
+            staticFields.style.display = 'none';
+        } else {
+            staticFields.style.display = 'block';
+        }
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleStaticFields();
+    });
+</script>
+{% endblock %}

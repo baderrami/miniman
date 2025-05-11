@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Device Manager{% endblock %}</title>
+    <title>{% block title %}Miniman{% endblock %}</title>
 
     {% if use_cdn %}
     <!-- Load from CDN in development mode -->
@@ -57,7 +57,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('network.dashboard') }}">
-                <i class="bi bi-hdd-network"></i> Device Manager
+                <i class="bi bi-hdd-network"></i> Miniman
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -141,7 +141,7 @@
 
     <footer class="footer mt-5 py-3 bg-light">
         <div class="container text-center">
-            <span class="text-muted">Device Manager &copy; {{ now.year }}</span>
+            <span class="text-muted">Miniman &copy; {{ now.year }}</span>
         </div>
     </footer>
 
