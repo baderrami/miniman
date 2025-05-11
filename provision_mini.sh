@@ -213,7 +213,7 @@ fi
 # Clone repository if provided and directory is empty
 if [ -n "$GIT_REPO" ] && [ -z "$(ls -A $APP_DIR)" ]; then
   print_message "Cloning application repository..."
-  GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch dev "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
 elif [ -n "$GIT_REPO" ] && [ -d "$APP_DIR/.git" ]; then
   print_message "Updating existing repository..."
   cd "$APP_DIR"
@@ -228,7 +228,7 @@ elif [ -n "$GIT_REPO" ]; then
       print_message "Backing up existing directory..."
       mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
       mkdir -p "$APP_DIR"
-      GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+      GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch dev "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
       ;;
     p|P)
       if [ -d "$APP_DIR/.git" ]; then
@@ -265,6 +265,43 @@ if [ ! -d "$APP_DIR/venv" ]; then
     deactivate
   fi
 fi
+
+# Ensure all static resources are available locally
+print_message "Ensuring all static resources are available locally..."
+
+# Create fonts directory if it doesn't exist
+mkdir -p "$APP_DIR/app/static/fonts"
+
+# Download Bootstrap Icons font files if they don't exist
+if [ ! -f "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ] || [ ! -s "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" ]; then
+  print_message "Downloading Bootstrap Icons font files..."
+  curl -s -L -o "$APP_DIR/app/static/fonts/bootstrap-icons.woff2" "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff2"
+  curl -s -L -o "$APP_DIR/app/static/fonts/bootstrap-icons.woff" "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/fonts/bootstrap-icons.woff"
+
+  # Update CSS to reference local font files if needed
+  if ! grep -q "font-face" "$APP_DIR/app/static/css/bootstrap-icons.css"; then
+    print_message "Updating bootstrap-icons.css to use local font files..."
+    sed -i '1i @font-face {\n  font-family: "bootstrap-icons";\n  src: url("../fonts/bootstrap-icons.woff2") format("woff2"),\n       url("../fonts/bootstrap-icons.woff") format("woff");\n}\n' "$APP_DIR/app/static/css/bootstrap-icons.css"
+
+    # Add font-family to the CSS selectors if not already present
+    if ! grep -q "font-family: \"bootstrap-icons\"" "$APP_DIR/app/static/css/bootstrap-icons.css"; then
+      sed -i 's/\.bi::before,/\.bi::before,/; s/{/{\n  font-family: "bootstrap-icons";/' "$APP_DIR/app/static/css/bootstrap-icons.css"
+    fi
+  fi
+fi
+
+# Ensure all other required static files exist
+REQUIRED_FILES=(
+  "css/bootstrap.min.css"
+  "js/bootstrap.bundle.min.js"
+  "js/chart.min.js"
+)
+
+for file in "${REQUIRED_FILES[@]}"; do
+  if [ ! -f "$APP_DIR/app/static/$file" ]; then
+    print_warning "Missing required static file: $file"
+  fi
+done
 
 # Initialize database
 if [ -f "$APP_DIR/run.py" ]; then
@@ -303,6 +340,7 @@ RestartSec=5
 # Set more environment variables
 Environment="PYTHONUNBUFFERED=1"
 Environment="PYTHONIOENCODING=UTF-8"
+Environment="FLASK_CONFIG=offline"
 
 [Install]
 WantedBy=multi-user.target

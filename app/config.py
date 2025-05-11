@@ -6,7 +6,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard-to-guess-string'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
-    
+
     @staticmethod
     def init_app(app):
         pass
@@ -28,10 +28,15 @@ class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'prod.sqlite')
 
+class OfflineConfig(ProductionConfig):
+    """Offline configuration for environments without internet"""
+    OFFLINE_MODE = True
+
 # Configuration dictionary
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig
+    'offline': OfflineConfig,
+    'default': OfflineConfig  # Set offline mode as default for better offline experience
 }
