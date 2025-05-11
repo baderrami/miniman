@@ -4,8 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Device Manager{% endblock %}</title>
+
+    {% if use_cdn %}
+    <!-- Load from CDN in development mode -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Fallback for Bootstrap CSS if CDN fails -->
+    <script>
+        function testCSS(url) {
+            var link = document.createElement('link');
+            link.href = url;
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+
+            var img = document.createElement('img');
+            img.onerror = function() {
+                // If CDN fails, load local version
+                if (url.includes('bootstrap.min.css')) {
+                    document.head.appendChild(
+                        Object.assign(document.createElement('link'), {
+                            rel: 'stylesheet',
+                            href: "{{ url_for('static', filename='css/bootstrap.min.css') }}"
+                        })
+                    );
+                } else if (url.includes('bootstrap-icons.css')) {
+                    document.head.appendChild(
+                        Object.assign(document.createElement('link'), {
+                            rel: 'stylesheet',
+                            href: "{{ url_for('static', filename='css/bootstrap-icons.css') }}"
+                        })
+                    );
+                }
+            };
+            img.src = url;
+        }
+
+        testCSS('https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css');
+        testCSS('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css');
+    </script>
+    {% else %}
+    <!-- Load locally in production mode -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    {% endif %}
+
+    <!-- Always load custom CSS locally in both modes -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block styles %}{% endblock %}
 </head>
@@ -101,8 +145,42 @@
         </div>
     </footer>
 
+    {% if use_cdn %}
+    <!-- Load from CDN in development mode -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" integrity="sha256-+8RZJLOWWrKgmQIpih1dtUGjDL6b5jvvkUqwjYYjfY=" crossorigin="anonymous"></script>
+
+    <!-- Fallback for JS libraries if CDN fails -->
+    <script>
+        function loadFallbackScript(cdnUrl, localPath) {
+            var script = document.createElement('script');
+            script.src = cdnUrl;
+            script.onerror = function() {
+                var fallbackScript = document.createElement('script');
+                fallbackScript.src = localPath;
+                document.body.appendChild(fallbackScript);
+            };
+            document.body.appendChild(script);
+        }
+
+        // Check if scripts are already loaded
+        if (typeof bootstrap === 'undefined') {
+            loadFallbackScript("https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js", 
+                              "{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}");
+        }
+
+        if (typeof Chart === 'undefined') {
+            loadFallbackScript("https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js", 
+                              "{{ url_for('static', filename='js/chart.min.js') }}");
+        }
+    </script>
+    {% else %}
+    <!-- Load locally in production mode -->
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+    {% endif %}
+
+    <!-- Always load custom JS locally in both modes -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>

@@ -50,10 +50,15 @@ def create_app(config_name='default'):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
-        
+
     # Context processor to add datetime to all templates
     @app.context_processor
     def inject_now():
         return {'now': datetime.now()}
+
+    # Context processor to make USE_CDN flag available to templates
+    @app.context_processor
+    def inject_config():
+        return {'use_cdn': app.config.get('USE_CDN', False)}
 
     return app

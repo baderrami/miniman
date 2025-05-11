@@ -103,9 +103,34 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the development server
+# Run the development server (uses CDN for static resources)
+export FLASK_CONFIG=development
+python run.py
+
+# Or run in production mode (uses local static resources)
+export FLASK_CONFIG=production
 python run.py
 ```
+
+### Resource Loading Modes
+Mini Manager supports two modes for loading static resources:
+
+1. **Production Mode** (default): All static resources (CSS, JavaScript, fonts) are loaded locally from the server. This ensures the application works without internet connectivity, making it suitable for offline environments.
+
+2. **Development Mode**: Static resources are loaded from Content Delivery Networks (CDNs). This mode is useful during development to ensure you're using the latest versions of libraries and to reduce local storage requirements.
+
+To switch between modes:
+```bash
+# For development mode (using CDNs)
+export FLASK_CONFIG=development
+python run.py
+
+# For production mode (using local resources)
+export FLASK_CONFIG=production
+python run.py
+```
+
+The application includes fallback mechanisms to load resources locally if CDNs are unavailable in development mode.
 ### Discussion
 Have ideas or questions? Join the discussion on our [GitHub Discussions](https://github.com/baderrami/miniman/discussions) page. This is the perfect place to:
 - Propose new features
