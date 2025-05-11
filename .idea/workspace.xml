@@ -4,17 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Enhance authentication, user management, and CSRF protection&#10;&#10;Added user editing functionality for admins, ensured CSRF protection across forms, and refactored user registration and system reset handling for better validation and user feedback. Updates improve security, maintainability, and user experience throughout the application.">
-      <change afterPath="$PROJECT_DIR$/app/templates/configure_network.html" afterDir="false" />
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Add support for custom domain &quot;mini.man&quot; in configuration&#10;&#10;Updated the provisioning script, README, and documentation to include the new &quot;mini.man&quot; domain for accessing the web interface. Adjusted dnsmasq and Nginx configurations to support the custom domain, enhancing user accessibility and providing an alternative to the IP address.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/static/css/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/app/static/css/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/static/js/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/base.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/commands.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/commands.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/dashboard.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/dashboard.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/login.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/network.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/network.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/system.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/system.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/provisioning_script.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provisioning_script.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,6 +31,7 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -63,32 +56,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.run.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
-    &quot;SHELLCHECK.PATH&quot;: &quot;C:\\Users\\azzam\\AppData\\Roaming\\JetBrains\\IntelliJIdea2025.1\\plugins\\Shell Script\\shellcheck.exe&quot;,
-    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;multi-env&quot;,
-    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;//wsl.localhost/Ubuntu-24.04/home/dev/projects&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
-    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.run.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "SHELLCHECK.PATH": "/Users/bader/Library/Application Support/JetBrains/PyCharm2025.1/plugins/Shell Script/shellcheck",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "multi-env",
+    "go.import.settings.migrated": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "//wsl.localhost/Ubuntu-24.04/home/dev/projects",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.0",
+    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable",
+    "show.migrate.to.gradle.popup": "false",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="run" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="miniman" />
@@ -224,7 +218,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746988409643</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Add support for custom domain &quot;mini.man&quot; in configuration&#10;&#10;Updated the provisioning script, README, and documentation to include the new &quot;mini.man&quot; domain for accessing the web interface. Adjusted dnsmasq and Nginx configurations to support the custom domain, enhancing user accessibility and providing an alternative to the IP address.">
+      <option name="closed" value="true" />
+      <created>1746990537750</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1746990537750</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -235,7 +237,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="multi-env" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -254,13 +268,14 @@
     <MESSAGE value="Add CDN support and fallback mechanisms for static assets&#10;&#10;Implemented dual resource loading modes: production (local assets) and development (CDN with local fallbacks). Updated templates, configuration, and documentation to enhance flexibility and reliability in different environments." />
     <MESSAGE value="Add profile template for user account details&#10;&#10;Introduced a new HTML template to display the user profile page. The page includes sections for account information, user roles, and security features such as logout functionality. This template extends the base layout for consistency." />
     <MESSAGE value="Enhance authentication, user management, and CSRF protection&#10;&#10;Added user editing functionality for admins, ensured CSRF protection across forms, and refactored user registration and system reset handling for better validation and user feedback. Updates improve security, maintainability, and user experience throughout the application." />
-    <option name="LAST_COMMIT_MESSAGE" value="Enhance authentication, user management, and CSRF protection&#10;&#10;Added user editing functionality for admins, ensured CSRF protection across forms, and refactored user registration and system reset handling for better validation and user feedback. Updates improve security, maintainability, and user experience throughout the application." />
+    <MESSAGE value="Add support for custom domain &quot;mini.man&quot; in configuration&#10;&#10;Updated the provisioning script, README, and documentation to include the new &quot;mini.man&quot; domain for accessing the web interface. Adjusted dnsmasq and Nginx configurations to support the custom domain, enhancing user accessibility and providing an alternative to the IP address." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add support for custom domain &quot;mini.man&quot; in configuration&#10;&#10;Updated the provisioning script, README, and documentation to include the new &quot;mini.man&quot; domain for accessing the web interface. Adjusted dnsmasq and Nginx configurations to support the custom domain, enhancing user accessibility and providing an alternative to the IP address." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
     <settings-migrated>true</settings-migrated>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1746989059709" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1746990417193" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
