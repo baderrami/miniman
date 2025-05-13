@@ -20,24 +20,20 @@ def system():
 def reset():
     """Handle system reset"""
     if request.method == 'POST':
-        confirmation = request.form.get('confirmation')
-        
-        if confirmation != 'RESET':
-            flash('Invalid confirmation text. System reset aborted.', 'danger')
-            return redirect(url_for('system.system'))
-        
         try:
             # Perform system reset
             perform_system_reset()
-            
+
             # This point should not be reached as the system will reboot
             flash('System reset initiated. The device will reboot shortly.', 'success')
         except Exception as e:
             flash(f'Error resetting system: {str(e)}', 'danger')
-        
+
         return redirect(url_for('system.system'))
-    
-    return render_template('system_reset.html')
+
+    # For GET requests, redirect to the system page
+    flash('System reset requires a POST request.', 'warning')
+    return redirect(url_for('system.system'))
 
 @system_bp.route('/system/info')
 @login_required
@@ -46,7 +42,7 @@ def system_info():
     try:
         system_info = get_system_info()
         disk_usage = get_disk_usage()
-        
+
         return jsonify({
             'system': system_info,
             'disk': disk_usage,

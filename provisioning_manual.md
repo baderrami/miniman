@@ -64,7 +64,7 @@ sudo ./provisioning_script.sh
 After the script completes, verify that:
 - The WiFi access point is active and broadcasting with SSID "miniman"
 - You can connect to the WiFi network using the password "123456789"
-- The web interface is accessible at [http://192.168.50.1](http://192.168.50.1)
+- The web interface is accessible at [http://192.168.50.1](http://192.168.50.1) or [http://mini.man](http://mini.man)
 
 ## Script Functionality
 The provisioning script performs the following tasks:
@@ -135,6 +135,20 @@ Alternatively, after installation:
 1. Edit the systemd-networkd configuration: `/etc/systemd/network/10-wlan0.network`
 2. Edit the dnsmasq configuration: `/etc/dnsmasq.conf`
 3. Restart services: `sudo systemctl restart systemd-networkd dnsmasq`
+
+### Custom Domain Configuration
+The Mini Manager is configured with a custom domain name `mini.man` that resolves to the device's IP address (192.168.50.1). This allows users to access the web interface by typing `http://mini.man` in their browser instead of the IP address.
+
+This is implemented through:
+1. A DNS entry in dnsmasq configuration: `address=/mini.man/192.168.50.1`
+2. The Nginx server configuration includes `mini.man` in the `server_name` directive
+
+To modify or add additional custom domains:
+1. Edit the dnsmasq configuration: `/etc/dnsmasq.conf`
+2. Add a line in the format: `address=/your.domain/192.168.50.1`
+3. Edit the Nginx configuration: `/etc/nginx/sites-available/miniman`
+4. Add your domain to the `server_name` directive
+5. Restart services: `sudo systemctl restart dnsmasq nginx`
 
 ### Application Customization
 To customize the application:
@@ -252,7 +266,7 @@ The script is designed to be idempotent and can be run multiple times. When reru
 After successful provisioning, complete these important steps:
 ### 1. Change Default Credentials
 1. Connect to the WiFi network "miniman" with password "123456789"
-2. Access the web interface at [http://192.168.50.1](http://192.168.50.1)
+2. Access the web interface at [http://192.168.50.1](http://192.168.50.1) or [http://mini.man](http://mini.man)
 3. Log in with default credentials (admin/admin)
 4. Change the default admin password immediately
 
@@ -312,8 +326,51 @@ sudo journalctl -u hostapd
 sudo journalctl -u dnsmasq
 sudo journalctl -u miniman
 ```
+### Resource Loading Modes
+Mini Manager supports two modes for loading static resources:
+
+#### Production Mode (Default)
+In production mode, all static resources are loaded locally from the server. This ensures the application works without internet connectivity, making it suitable for offline environments.
+
+To run in production mode:
+``` bash
+export FLASK_CONFIG=production
+sudo systemctl restart miniman
+```
+
+Or modify the systemd service file to include the environment variable:
+``` bash
+sudo systemctl edit miniman
+```
+
+Add the following:
+```
+[Service]
+Environment="FLASK_CONFIG=production"
+```
+
+#### Development Mode
+In development mode, static resources are loaded from Content Delivery Networks (CDNs). This is useful during development to ensure you're using the latest versions of libraries and to reduce local storage requirements.
+
+To run in development mode:
+``` bash
+export FLASK_CONFIG=development
+sudo systemctl restart miniman
+```
+
+Or modify the systemd service file to include the environment variable:
+``` bash
+sudo systemctl edit miniman
+```
+
+Add the following:
+```
+[Service]
+Environment="FLASK_CONFIG=development"
+```
+
 ### Static Resource Management
-If you need to update the static resources:
+If you need to update the local static resources:
 ``` bash
 # Update Bootstrap
 sudo curl -s -L -o "/opt/miniman/app/static/css/bootstrap.min.css" "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
@@ -322,6 +379,8 @@ sudo curl -s -L -o "/opt/miniman/app/static/js/bootstrap.bundle.min.js" "https:/
 # Update Chart.js
 sudo curl -s -L -o "/opt/miniman/app/static/js/chart.min.js" "https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"
 ```
+
+Note: When running in development mode, these local resources are only used as fallbacks if CDN resources are unavailable.
 ### System Reset
 If needed, you can reset the system to its initial state:
 ``` bash

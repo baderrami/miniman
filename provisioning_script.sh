@@ -181,6 +181,8 @@ dhcp-range=192.168.50.10,192.168.50.100,12h
 dhcp-option=3,192.168.50.1
 # Set DNS server address
 dhcp-option=6,192.168.50.1
+# Add custom domain name
+address=/mini.man/192.168.50.1
 EOF
 fi
 
@@ -213,7 +215,7 @@ fi
 # Clone repository if provided and directory is empty
 if [ -n "$GIT_REPO" ] && [ -z "$(ls -A $APP_DIR)" ]; then
   print_message "Cloning application repository..."
-  GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch multi-env "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
 elif [ -n "$GIT_REPO" ] && [ -d "$APP_DIR/.git" ]; then
   print_message "Updating existing repository..."
   cd "$APP_DIR"
@@ -228,7 +230,7 @@ elif [ -n "$GIT_REPO" ]; then
       print_message "Backing up existing directory..."
       mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
       mkdir -p "$APP_DIR"
-      GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+      GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch multi-env "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
       ;;
     p|P)
       if [ -d "$APP_DIR/.git" ]; then
@@ -241,7 +243,7 @@ elif [ -n "$GIT_REPO" ]; then
         if [[ "$BACKUP_REPLACE" =~ ^[Yy]$ ]]; then
           mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
           mkdir -p "$APP_DIR"
-          GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+          GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch multi-env "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
         fi
       fi
       ;;
@@ -334,59 +336,61 @@ fi
 
 # Configure systemd service for the application
 APP_SERVICE="/etc/systemd/system/miniman.service"
-if [ ! -f "$APP_SERVICE" ]; then
-  print_message "Creating application service..."
+# Always recreate the service file to ensure it has the correct paths
+print_message "Creating application service..."
 
-  # Create runtime directory for gunicorn with proper permissions
-  print_message "Creating runtime directory for gunicorn..."
-  mkdir -p /var/run/miniman
-  chown www-data:www-data /var/run/miniman
-  chmod 755 /var/run/miniman
+# Create runtime directory for gunicorn with proper permissions
+print_message "Creating runtime directory for gunicorn..."
+mkdir -p /var/run/miniman
+chown www-data:www-data /var/run/miniman
+chmod 755 /var/run/miniman
 
-  cat <<EOF >"$APP_SERVICE"
+# Create service file with expanded variables
+cat <<EOF >"$APP_SERVICE"
 [Unit]
 Description=Mini Manager Application
 After=network.target
 
 [Service]
 User=www-data
-WorkingDirectory=$APP_DIR
+WorkingDirectory=/opt/miniman
 RuntimeDirectory=miniman
 # Add runtime directory settings to avoid permission issues
-ExecStart=$APP_DIR/venv/bin/gunicorn -w 4 -b 0.0.0.0:$HTTP_PORT --pid /var/run/miniman/gunicorn.pid --worker-tmp-dir /var/run/miniman run:app
+ExecStart=/opt/miniman/venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 --pid /var/run/miniman/gunicorn.pid --worker-tmp-dir /var/run/miniman "run:app"
 Restart=always
 RestartSec=5
-# Set more environment variables
+# Set environment variables for the application
+# FLASK_CONFIG must be one of the configurations defined in app/config.py
+# Valid values are 'development', 'production', or 'default'
 Environment="PYTHONUNBUFFERED=1"
 Environment="PYTHONIOENCODING=UTF-8"
-Environment="FLASK_CONFIG=offline"
+Environment="FLASK_CONFIG=production"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-  # Check if gunicorn is installed, install if not
-  if ! "$APP_DIR/venv/bin/pip" list | grep -q "gunicorn"; then
-    print_message "Installing gunicorn..."
-    source "$APP_DIR/venv/bin/activate"
-    pip install gunicorn
-    deactivate
-  fi
-
-  # Set proper permissions for the application directory
-  print_message "Setting proper permissions for application directory..."
-  chown -R www-data:www-data "$APP_DIR"
-  chmod -R 755 "$APP_DIR"
-
-  # Ensure instance directory exists with proper permissions
-  mkdir -p "$APP_DIR/instance"
-  chown -R www-data:www-data "$APP_DIR/instance"
-  chmod -R 755 "$APP_DIR/instance"
-
-  # Enable and start the service
-  systemctl enable miniman.service
-  systemctl start miniman.service || print_warning "Failed to start application service."
+# Check if gunicorn is installed, install if not
+if ! "$APP_DIR/venv/bin/pip" list | grep -q "gunicorn"; then
+  print_message "Installing gunicorn..."
+  source "$APP_DIR/venv/bin/activate"
+  pip install gunicorn
+  deactivate
 fi
+
+# Set proper permissions for the application directory
+print_message "Setting proper permissions for application directory..."
+chown -R www-data:www-data "$APP_DIR"
+chmod -R 755 "$APP_DIR"
+
+# Ensure instance directory exists with proper permissions
+mkdir -p "$APP_DIR/instance"
+chown -R www-data:www-data "$APP_DIR/instance"
+chmod -R 755 "$APP_DIR/instance"
+
+# Enable and start the service
+systemctl enable miniman.service
+systemctl start miniman.service || print_warning "Failed to start application service."
 
 # Configure Nginx (optional, as we're using direct Gunicorn binding)
 NGINX_CONF="/etc/nginx/sites-available/miniman"
@@ -402,7 +406,7 @@ if [ ! -f "$NGINX_CONF" ]; then
   cat <<EOF >"$NGINX_CONF"
 server {
     listen 80 default_server;
-    server_name miniman.local 192.168.50.1;
+    server_name miniman.local mini.man 192.168.50.1;
 
     # Increase timeouts for slow connections
     proxy_connect_timeout 300s;
@@ -497,6 +501,14 @@ fi
 # === Final Checks and Fixes ===
 print_message "Performing final checks and fixes..."
 
+# Note: The miniman.service file uses full paths instead of variables
+# because systemd does not expand shell variables in service files.
+# This prevents the 'status=203/EXEC' error that occurs when systemd
+# cannot find the executable specified in ExecStart.
+#
+# The service file is always recreated during provisioning to ensure
+# it has the correct hardcoded paths, even if it already exists.
+
 # Check if miniman service is running correctly
 if ! systemctl is-active --quiet miniman.service; then
   print_warning "miniman service is not running correctly. Attempting to fix common issues..."
@@ -527,7 +539,7 @@ print_success "
    - HTTP traffic on port 80 is redirected to port $HTTP_PORT
 
 👉 Connect to the WiFi network '$SSID' with password '$PASSPHRASE'
-   Then access the web interface at http://192.168.50.1
+   Then access the web interface at http://192.168.50.1 or http://mini.man
 
 📝 Default credentials:
    - Username: admin

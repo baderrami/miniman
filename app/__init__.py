@@ -1,11 +1,13 @@
 from flask import Flask, redirect, url_for
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 from datetime import datetime
 
 # Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
+csrf = CSRFProtect()
 
 def create_app(config_name='default'):
     """
@@ -27,6 +29,7 @@ def create_app(config_name='default'):
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
+    csrf.init_app(app)
 
     # Register blueprints
     from app.controllers.auth import auth_bp
@@ -50,10 +53,15 @@ def create_app(config_name='default'):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
-        
+
     # Context processor to add datetime to all templates
     @app.context_processor
     def inject_now():
         return {'now': datetime.now()}
+
+    # Context processor to make USE_CDN flag available to templates
+    @app.context_processor
+    def inject_config():
+        return {'use_cdn': app.config.get('USE_CDN', False)}
 
     return app

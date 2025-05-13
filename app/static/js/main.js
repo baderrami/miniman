@@ -1,5 +1,5 @@
 /**
- * Main JavaScript file for Device Manager application
+ * Main JavaScript file for Miniman application
  */
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -142,12 +142,24 @@ This design enables network administrators to manage devices through an intuitiv
 - Service isolation through systemd configuration
 - Restricted permissions on configuration files and scripts
 
-## Offline Operation
-The Mini Manager is designed to operate fully offline with no internet connectivity:
-1. All static resources (CSS, JavaScript, fonts, images) are cached locally
+## Resource Loading Modes
+The Mini Manager supports two modes for loading static resources:
+
+### Production Mode (Default)
+Designed for offline operation with no internet connectivity:
+1. All static resources (CSS, JavaScript, fonts, images) are loaded locally
 2. Bootstrap and Chart.js libraries are stored on the device
 3. Font files for Bootstrap Icons are downloaded during provisioning
 4. Web interface remains fully functional without internet access
+
+### Development Mode
+Optimized for development environments with internet connectivity:
+1. Static resources (Bootstrap, Chart.js, Bootstrap Icons) are loaded from CDNs
+2. Custom resources (application-specific CSS/JS) are still loaded locally
+3. Fallback mechanisms automatically load local resources if CDNs are unavailable
+4. Reduces local storage requirements and ensures latest library versions
+
+The mode is controlled through the `FLASK_CONFIG` environment variable, with `production` mode as the default for offline operation.
 
 ## Scalability Considerations
 The architecture can be extended in several ways:

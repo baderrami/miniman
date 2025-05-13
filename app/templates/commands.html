@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Command Execution - Device Manager{% endblock %}
+{% block title %}Command Execution - Miniman{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
@@ -34,7 +34,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-8 mb-3">
         <div class="card shadow-sm mb-3">
             <div class="card-header">
@@ -42,6 +42,7 @@
             </div>
             <div class="card-body">
                 <form action="{{ url_for('commands.execute') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="command" class="form-label">Command</label>
                         <select class="form-select" id="command" name="command" required>
@@ -70,7 +71,7 @@
                 </form>
             </div>
         </div>
-        
+
         {% if output %}
         <div class="card shadow-sm">
             <div class="card-header">
@@ -99,16 +100,16 @@
                 const format = this.getAttribute('data-format');
                 const example = this.getAttribute('data-example');
                 const required = this.getAttribute('data-required') === 'True';
-                
+
                 selectCommand(name, format, example, required);
             });
         });
-        
+
         // Initialize command details when selecting from dropdown
         document.getElementById('command').addEventListener('change', function() {
             const commandName = this.value;
             const commandItems = document.querySelectorAll('.command-item');
-            
+
             // Find the matching command item
             for (let i = 0; i < commandItems.length; i++) {
                 const item = commandItems[i];
@@ -116,26 +117,26 @@
                     const format = item.getAttribute('data-format');
                     const example = item.getAttribute('data-example');
                     const required = item.getAttribute('data-required') === 'True';
-                    
+
                     selectCommand(commandName, format, example, required);
                     break;
                 }
             }
         });
     });
-    
+
     function selectCommand(name, format, example, argsRequired) {
         // Set the command in the dropdown
         document.getElementById('command').value = name;
-        
+
         // Set format and example
         document.getElementById('format').value = format;
         document.getElementById('example').value = example;
-        
+
         // Focus on args field if required
         const argsField = document.getElementById('args');
         argsField.required = argsRequired;
-        
+
         if (argsRequired) {
             argsField.focus();
             document.getElementById('argsHelp').innerHTML = 'Arguments are required for this command';

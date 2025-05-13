@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}System Management - Device Manager{% endblock %}
+{% block title %}System Management - Miniman{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
@@ -9,9 +9,12 @@
         <p class="text-muted">Monitor and manage system operations</p>
     </div>
     <div class="col-auto">
-        <a href="{{ url_for('system.reset') }}" class="btn btn-danger">
-            <i class="bi bi-arrow-repeat"></i> System Reset
-        </a>
+        <form action="{{ url_for('system.reset') }}" method="POST" onsubmit="return confirm('Are you sure you want to reset the system? This will restore factory defaults.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-arrow-repeat"></i> System Reset
+            </button>
+        </form>
     </div>
 </div>
 
@@ -72,7 +75,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-6 mb-3">
         <div class="card shadow-sm">
             <div class="card-header">
@@ -181,7 +184,7 @@
             bar.style.width = percent + '%';
             bar.setAttribute('aria-valuenow', percent);
         });
-        
+
         // Auto-refresh system information every 30 seconds
         setInterval(function() {
             fetch('{{ url_for("system.system_info") }}')
