@@ -62,6 +62,29 @@ else
     print_message "Docker is already installed"
 fi
 
+# Ensure the docker group exists and add the current user to it
+if ! getent group docker > /dev/null; then
+    print_message "Creating docker group..."
+    groupadd docker
+fi
+
+# Get the user running the application (www-data for web app)
+APP_USER="www-data"
+
+# Add the user to the docker group
+if ! groups $APP_USER | grep -q '\bdocker\b'; then
+    print_message "Adding $APP_USER to the docker group..."
+    usermod -aG docker $APP_USER
+    print_success "$APP_USER added to docker group"
+fi
+
+# Set proper permissions for the Docker socket
+if [ -S /var/run/docker.sock ]; then
+    print_message "Setting permissions for Docker socket..."
+    chmod 666 /var/run/docker.sock
+    print_success "Docker socket permissions updated"
+fi
+
 # Install Docker Compose if not already installed
 if ! command -v docker-compose &> /dev/null; then
     print_message "Installing Docker Compose..."
