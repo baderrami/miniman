@@ -37,7 +37,39 @@ print_error() {
 print_message "Installing required packages..."
 apt update
 apt install -y hostapd dnsmasq iptables \
-    wireless-tools curl python3-pip python3-venv git nginx
+    wireless-tools curl python3-pip python3-venv git nginx \
+    apt-transport-https ca-certificates gnupg lsb-release
+
+# Install Docker if not already installed
+if ! command -v docker &> /dev/null; then
+    print_message "Installing Docker..."
+    # Add Docker's official GPG key
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+    # Set up the stable repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # Install Docker Engine
+    apt update
+    apt install -y docker-ce docker-ce-cli containerd.io
+
+    # Enable and start Docker service
+    systemctl enable docker
+    systemctl start docker
+
+    print_success "Docker installed successfully"
+else
+    print_message "Docker is already installed"
+fi
+
+# Install Docker Compose if not already installed
+if ! command -v docker-compose &> /dev/null; then
+    print_message "Installing Docker Compose..."
+    apt install -y docker-compose-plugin
+    print_success "Docker Compose installed successfully"
+else
+    print_message "Docker Compose is already installed"
+fi
 
 # Setup custom iptables persistence instead of using iptables-persistent package
 print_message "Setting up custom iptables persistence..."

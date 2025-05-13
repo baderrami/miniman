@@ -89,6 +89,12 @@
                             <i class="bi bi-gear"></i> System
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'docker.docker' %}active{% endif %}" 
+                           href="{{ url_for('docker.docker') }}">
+                            <i class="bi bi-box"></i> Docker
+                        </a>
+                    </li>
                     {% if current_user.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'auth.users' %}active{% endif %}" 

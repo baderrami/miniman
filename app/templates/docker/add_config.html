@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Add Docker Compose Configuration{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Add Docker Compose Configuration</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">New Configuration</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.add_config') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                    <div class="form-text">A unique name for this configuration</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="source_url" class="form-label">Source URL</label>
+                    <input type="url" class="form-control" id="source_url" name="source_url" required>
+                    <div class="form-text">URL to the Docker Compose file (e.g., https://example.com/docker-compose.yml)</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    <div class="form-text">Optional description of this configuration</div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('docker.docker') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Add Configuration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

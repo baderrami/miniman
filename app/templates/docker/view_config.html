@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.name }} - Docker Compose Configuration{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ config.name }}</h1>
+        <a href="{{ url_for('docker.docker') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Configuration Details</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Description</dt>
+                        <dd class="col-sm-8">{{ config.description or 'No description' }}</dd>
+                        
+                        <dt class="col-sm-4">Source URL</dt>
+                        <dd class="col-sm-8">
+                            <a href="{{ config.source_url }}" target="_blank">{{ config.source_url }}</a>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Local Path</dt>
+                        <dd class="col-sm-8">{{ config.local_path or 'Not downloaded' }}</dd>
+                        
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            {% if config.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Last Checked</dt>
+                        <dd class="col-sm-8">{{ config.last_checked.strftime('%Y-%m-%d %H:%M') }}</dd>
+                        
+                        <dt class="col-sm-4">Last Updated</dt>
+                        <dd class="col-sm-8">{{ config.last_updated.strftime('%Y-%m-%d %H:%M') }}</dd>
+                        
+                        <dt class="col-sm-4">Updates</dt>
+                        <dd class="col-sm-8">
+                            {% if config.update_available %}
+                                <span class="badge bg-warning">Update Available</span>
+                            {% else %}
+                                <span class="badge bg-info">Up to date</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <form action="{{ url_for('docker.check_updates', id=config.id) }}" method="post" class="mb-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-info w-100">Check for Updates</button>
+                        </form>
+                        
+                        {% if config.update_available %}
+                            <form action="{{ url_for('docker.update_config', id=config.id) }}" method="post" class="mb-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-warning w-100">Update Configuration</button>
+                            </form>
+                        {% endif %}
+                        
+                        <form action="{{ url_for('docker.pull_config', id=config.id) }}" method="post" class="mb-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-secondary w-100">Pull Images</button>
+                        </form>
+                        
+                        {% if config.is_active %}
+                            <form action="{{ url_for('docker.stop_config', id=config.id) }}" method="post" class="mb-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-danger w-100">Stop Compose</button>
+                            </form>
+                            
+                            <form action="{{ url_for('docker.restart_config', id=config.id) }}" method="post" class="mb-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-warning w-100">Restart Compose</button>
+                            </form>
+                        {% else %}
+                            <form action="{{ url_for('docker.run_config', id=config.id) }}" method="post" class="mb-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-success w-100">Run Compose</button>
+                            </form>
+                        {% endif %}
+                        
+                        <form action="{{ url_for('docker.delete_config', id=config.id) }}" method="post" class="mb-2" onsubmit="return confirm('Are you sure you want to delete this configuration?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-danger w-100">Delete Configuration</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Containers</h5>
+        </div>
+        <div class="card-body">
+            {% if containers %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Image</th>
+                                <th>Status</th>
+                                <th>Ports</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for container in containers %}
+                                <tr>
+                                    <td>{{ container.name }}</td>
+                                    <td>{{ container.image }}</td>
+                                    <td>{{ container.status }}</td>
+                                    <td>{{ container.ports }}</td>
+                                    <td>
+                                        <a href="{{ url_for('docker.container_logs', id=config.id, container_id=container.id) }}" class="btn btn-sm btn-info">View Logs</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No containers found for this configuration.
+                    {% if not config.is_active %}
+                        <form action="{{ url_for('docker.run_config', id=config.id) }}" method="post" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-success">Run Compose</button>
+                        </form>
+                        to start containers.
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
