@@ -103,6 +103,10 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Initialize the database and create admin user
+export FLASK_APP=run.py
+flask init-db
+
 # Run the development server (uses CDN for static resources)
 export FLASK_CONFIG=development
 python run.py
@@ -110,6 +114,22 @@ python run.py
 # Or run in production mode (uses local static resources)
 export FLASK_CONFIG=production
 python run.py
+```
+
+### Database Initialization
+The `flask init-db` command initializes both development and production databases and creates an admin user in each. This ensures you can work with the application in either environment.
+
+After running `flask init-db`, you'll have:
+- Initialized database tables in both development and production environments
+- Created an admin user with the following credentials:
+  - Username: admin
+  - Email: admin@example.com
+  - Password: admin
+
+You can create additional users using the web interface or with the following command:
+``` bash
+export FLASK_APP=run.py
+flask create-user
 ```
 
 ### Resource Loading Modes

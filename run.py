@@ -52,6 +52,21 @@ def init_db():
         DockerComposeConfig.__table__.create(db.engine, checkfirst=True)
         DockerContainer.__table__.create(db.engine, checkfirst=True)
 
+        # Create admin user in the other database if it doesn't exist
+        if User.query.filter_by(username='admin').first() is None:
+            # Create admin user
+            admin = User(
+                username='admin',
+                email='admin@example.com',
+                password='admin',
+                is_admin=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print(f'Admin user created in {other_config} database.')
+        else:
+            print(f'Admin user already exists in {other_config} database.')
+
     print('Database initialized.')
 
 @app.cli.command("create-user")
