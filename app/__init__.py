@@ -36,11 +36,13 @@ def create_app(config_name='default'):
     from app.controllers.network import network_bp
     from app.controllers.commands import commands_bp
     from app.controllers.system import system_bp
+    from app.controllers.docker import docker_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(network_bp)
     app.register_blueprint(commands_bp)
     app.register_blueprint(system_bp)
+    app.register_blueprint(docker_bp)
 
     # Add root route
     @app.route('/')

@@ -12,7 +12,7 @@ This manual provides comprehensive instructions for provisioning Linux servers a
 9. [Maintenance](#maintenance)
 
 ## Overview
-The Mini Manager provisioning script () automates the process of configuring a Linux server as a WiFi access point and deploying the Mini Manager application. This enables the server to function as a network management device with a web-based interface accessible through the WiFi network it creates. `provisioning_script.sh`
+The Mini Manager provisioning script (`provisioning_script.sh`) automates the process of configuring a Linux server as a WiFi access point and deploying the Mini Manager application. This enables the server to function as a network management device with a web-based interface accessible through the WiFi network it creates.
 Key features:
 - Automatic WiFi access point configuration (SSID: miniman)
 - DHCP server setup for connected clients
