@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Add templates and models for Docker management&#10;&#10;Introduced new HTML templates and database models for managing Docker containers, images, volumes, and networks. Updated the Flask shell context and initialization logic to include the new models. Modified `requirements.txt` to add dependencies for date parsing required by the updates.">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/controllers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/controllers/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/docker/view_config.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/docker/view_config.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -142,7 +138,7 @@
       <workItem from="1746954655621" duration="14000" />
       <workItem from="1746954833280" duration="2215000" />
       <workItem from="1747320827162" duration="903000" />
-      <workItem from="1747337830245" duration="1290000" />
+      <workItem from="1747337830245" duration="1596000" />
     </task>
     <task id="LOCAL-00001" summary="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated.">
       <option name="closed" value="true" />
@@ -272,7 +268,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747326650362</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="Add templates and models for Docker management&#10;&#10;Introduced new HTML templates and database models for managing Docker containers, images, volumes, and networks. Updated the Flask shell context and initialization logic to include the new models. Modified `requirements.txt` to add dependencies for date parsing required by the updates.">
+      <option name="closed" value="true" />
+      <created>1747339308607</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1747339308607</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -329,6 +333,6 @@
     <SUITE FILE_PATH="coverage/miniman$test_all_tables.coverage" NAME="test_all_tables Coverage Results" MODIFIED="1747171556949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$init_all_tables.coverage" NAME="init_all_tables Coverage Results" MODIFIED="1747239180234" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$test_docker_tables.coverage" NAME="test_docker_tables Coverage Results" MODIFIED="1747249776205" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747337853935" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747339224850" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
