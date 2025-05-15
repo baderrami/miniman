@@ -4,31 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/build_image.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/connect_container.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/containers.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/create_network.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/create_volume.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/disconnect_container.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/exec.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/exec_result.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/images.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/networks.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/pull_image.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/view_container.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/view_image.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/view_network.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/view_volume.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/templates/docker/volumes.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/controllers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/controllers/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/docker/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/docker/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/architecture.md" beforeDir="false" afterPath="$PROJECT_DIR$/architecture.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/provisioning_script.sh" beforeDir="false" afterPath="$PROJECT_DIR$/provisioning_script.sh" afterDir="false" />
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Add templates for Docker container and image management&#10;&#10;Implemented HTML templates to manage Docker containers and images. Features include viewing, starting, stopping, restarting, and removing containers, as well as pulling, building, viewing, and removing images. Additional features include container command execution, log viewing, and detailed stats display.">
+      <change afterPath="$PROJECT_DIR$/README.update.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/update_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -274,7 +254,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747250852294</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="Add templates for Docker container and image management&#10;&#10;Implemented HTML templates to manage Docker containers and images. Features include viewing, starting, stopping, restarting, and removing containers, as well as pulling, building, viewing, and removing images. Additional features include container command execution, log viewing, and detailed stats display.">
+      <option name="closed" value="true" />
+      <created>1747325892612</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1747325892612</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -319,7 +307,8 @@
     <MESSAGE value="Add support for custom domain &quot;mini.man&quot; in configuration&#10;&#10;Updated the provisioning script, README, and documentation to include the new &quot;mini.man&quot; domain for accessing the web interface. Adjusted dnsmasq and Nginx configurations to support the custom domain, enhancing user accessibility and providing an alternative to the IP address." />
     <MESSAGE value="Add Docker management feature with UI and database integration&#10;&#10;This commit introduces a comprehensive Docker management module, including templates for Docker Compose configurations, container logs, and actions. It also adds database models, initialization scripts, and test utilities to support the feature. Instructions for setup and troubleshooting have been documented for ease of adoption." />
     <MESSAGE value="Remove deprecated Docker table scripts and update init-db logic&#10;&#10;This commit removes redundant scripts for creating and testing Docker-related tables (`create_docker_tables.py` and `test_docker_tables.py`). The `flask init-db` command is enhanced to handle table creation and admin user setup in both development and production databases. Documentation and workspace settings are updated accordingly." />
-    <option name="LAST_COMMIT_MESSAGE" value="Remove deprecated Docker table scripts and update init-db logic&#10;&#10;This commit removes redundant scripts for creating and testing Docker-related tables (`create_docker_tables.py` and `test_docker_tables.py`). The `flask init-db` command is enhanced to handle table creation and admin user setup in both development and production databases. Documentation and workspace settings are updated accordingly." />
+    <MESSAGE value="Add templates for Docker container and image management&#10;&#10;Implemented HTML templates to manage Docker containers and images. Features include viewing, starting, stopping, restarting, and removing containers, as well as pulling, building, viewing, and removing images. Additional features include container command execution, log viewing, and detailed stats display." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add templates for Docker container and image management&#10;&#10;Implemented HTML templates to manage Docker containers and images. Features include viewing, starting, stopping, restarting, and removing containers, as well as pulling, building, viewing, and removing images. Additional features include container command execution, log viewing, and detailed stats display." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
@@ -329,6 +318,6 @@
     <SUITE FILE_PATH="coverage/miniman$test_all_tables.coverage" NAME="test_all_tables Coverage Results" MODIFIED="1747171556949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$init_all_tables.coverage" NAME="init_all_tables Coverage Results" MODIFIED="1747239180234" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$test_docker_tables.coverage" NAME="test_docker_tables Coverage Results" MODIFIED="1747249776205" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747325624619" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747326297683" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
