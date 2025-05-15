@@ -22,16 +22,16 @@ Mini Manager is an automated solution for turning Linux devices into fully funct
 ``` bash
 wget https://github.com/baderrami/miniman/raw/main/provisioning_script.sh
 ```
-1. Make the script executable:
+2. Make the script executable:
 ``` bash
 chmod +x provisioning_script.sh
 ```
-1. Run the script as root:
+3. Run the script as root:
 ``` bash
 sudo ./provisioning_script.sh
 ```
-1. Once complete, connect to the WiFi network "miniman" with password "123456789"
-2. Access the web interface at [http://192.168.50.1](http://192.168.50.1) or simply type [http://mini.man](http://mini.man) in your browser
+4. Once complete, connect to the WiFi network "miniman" with password "123456789"
+5. Access the web interface at [http://192.168.50.1](http://192.168.50.1) or simply type [http://mini.man](http://mini.man) in your browser
 
 ### Default Credentials
 - **WiFi Network**: miniman
@@ -75,7 +75,7 @@ The system provides several management functions:
 
 ### Advanced Usage
 Power users can customize the Mini Manager by:
-1. Editing configuration files in and `/etc/hostapd/``/etc/dnsmasq.conf`
+1. Editing configuration files in `/etc/hostapd/` and `/etc/dnsmasq.conf`
 2. Modifying the web application in `/opt/miniman/`
 3. Creating custom scripts for specialized functionality
 4. Extending the application with additional Python modules

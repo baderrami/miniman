@@ -15,12 +15,29 @@ def make_shell_context():
     return dict(db=db, User=User, NetworkInterface=NetworkInterface, 
                 DockerComposeConfig=DockerComposeConfig, DockerContainer=DockerContainer)
 
-@app.cli.command("init-db")
-def init_db():
+def initialize_database(config_name=None):
     """
-    Initialize the database with tables and initial data
+    Helper function to initialize database tables and create admin user if needed
+
+    Args:
+        config_name (str): Configuration name to use, or None for current context
     """
-    # Create tables in the current app context (default configuration)
+    if config_name:
+        app_instance = create_app(config_name)
+        context_message = f"{config_name} database"
+        with app_instance.app_context():
+            _initialize_db_tables(context_message)
+    else:
+        _initialize_db_tables("default database")
+
+def _initialize_db_tables(context_message):
+    """
+    Create database tables and admin user
+
+    Args:
+        context_message (str): Message to display for context
+    """
+    # Create all tables
     db.create_all()
 
     # Explicitly create Docker tables to ensure they exist
@@ -38,36 +55,23 @@ def init_db():
         )
         db.session.add(admin)
         db.session.commit()
-        print('Admin user created.')
+        print(f'Admin user created in {context_message}.')
     else:
-        print('Admin user already exists.')
+        print(f'Admin user already exists in {context_message}.')
 
-    # Also initialize tables in the development database if we're in production mode
-    # or in the production database if we're in development mode
+@app.cli.command("init-db")
+def init_db():
+    """
+    Initialize the database with tables and initial data
+    """
+    # Initialize current database
+    initialize_database()
+
+    # Initialize other database (development if in production, production if in development)
     other_config = 'development' if os.getenv('FLASK_CONFIG') != 'development' else 'production'
-    other_app = create_app(other_config)
-    with other_app.app_context():
-        db.create_all()
-        # Explicitly create Docker tables in the other database
-        DockerComposeConfig.__table__.create(db.engine, checkfirst=True)
-        DockerContainer.__table__.create(db.engine, checkfirst=True)
+    initialize_database(other_config)
 
-        # Create admin user in the other database if it doesn't exist
-        if User.query.filter_by(username='admin').first() is None:
-            # Create admin user
-            admin = User(
-                username='admin',
-                email='admin@example.com',
-                password='admin',
-                is_admin=True
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print(f'Admin user created in {other_config} database.')
-        else:
-            print(f'Admin user already exists in {other_config} database.')
-
-    print('Database initialized.')
+    print('Database initialization complete.')
 
 @app.cli.command("create-user")
 def create_user():
