@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app import db
-from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork
+from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork, \
+    DockerOperationLog
 from app.utils.docker_utils import (
     ensure_docker_installed, install_docker, download_compose_file,
     check_for_updates, update_compose_file, run_compose, stop_compose,
@@ -11,7 +12,7 @@ from app.utils.docker_utils import (
     inspect_container, pull_image, remove_image, build_image,
     inspect_image, get_volumes, create_volume, remove_volume,
     inspect_volume, get_networks, create_network, remove_network,
-    inspect_network, connect_container_to_network, disconnect_container_from_network
+    inspect_network, connect_container_to_network, disconnect_container_from_network, check_compose_status
 )
 from app.controllers.auth import admin_required
 import os
@@ -101,7 +102,8 @@ def add_config():
             name=name,
             source_url=source_url,
             description=description,
-            local_path=local_path
+            local_path=local_path,
+            status='down'
         )
 
         db.session.add(config)
@@ -118,6 +120,11 @@ def view_config(id):
     """View a Docker Compose configuration"""
     config = DockerComposeConfig.query.get_or_404(id)
 
+    # Update the status of the configuration
+    if config.local_path and os.path.exists(config.local_path):
+        config.status = check_compose_status(config.local_path)
+        db.session.commit()
+
     # Get containers for this configuration
     containers = []
     if config.local_path and os.path.exists(config.local_path):
@@ -131,7 +138,9 @@ def view_config(id):
             if db_container and db_container.config_id == config.id:
                 containers.append(container)
 
-    return render_template('docker/view_config.html', config=config, containers=containers)
+    # Pass the DockerOperationLog model to the template for ordering
+    from app.models.docker import DockerOperationLog
+    return render_template('docker/view_config.html', config=config, containers=containers, DockerOperationLog=DockerOperationLog)
 
 @docker_bp.route('/docker/check-updates/<int:id>', methods=['POST'])
 @login_required
@@ -194,10 +203,26 @@ def run_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    success, output = run_compose(config.local_path)
+    # Create an operation log
+    operation_log = DockerOperationLog(
+        operation_type='run_compose',
+        config_id=config.id,
+        status='running'
+    )
+    db.session.add(operation_log)
+    db.session.commit()
+
+    # Update config status to indicate it's being deployed
+    config.status = 'deploying'
+    db.session.commit()
+
+    # Run the compose command with logging
+    success, output = run_compose(config.local_path, operation_log)
 
     if success:
         config.is_active = True
+        # Check the actual status of the compose configuration
+        config.status = check_compose_status(config.local_path)
         db.session.commit()
 
         # Update container information in database
@@ -205,9 +230,12 @@ def run_config(id):
 
         flash('Docker Compose started successfully.', 'success')
     else:
+        config.status = 'error'
+        db.session.commit()
         flash(f'Error starting Docker Compose: {output}', 'danger')
 
-    return redirect(url_for('docker.view_config', id=id))
+    # Redirect to the operation log page
+    return redirect(url_for('docker.operation_log', id=operation_log.id))
 
 @docker_bp.route('/docker/stop/<int:id>', methods=['POST'])
 @login_required
@@ -220,10 +248,25 @@ def stop_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    success, output = stop_compose(config.local_path)
+    # Create an operation log
+    operation_log = DockerOperationLog(
+        operation_type='stop_compose',
+        config_id=config.id,
+        status='running'
+    )
+    db.session.add(operation_log)
+    db.session.commit()
+
+    # Update config status to indicate it's being stopped
+    config.status = 'stopping'
+    db.session.commit()
+
+    # Run the compose command with logging
+    success, output = stop_compose(config.local_path, operation_log)
 
     if success:
         config.is_active = False
+        config.status = 'down'
         db.session.commit()
 
         # Remove container information from database
@@ -232,9 +275,13 @@ def stop_config(id):
 
         flash('Docker Compose stopped successfully.', 'success')
     else:
+        # Check the actual status of the compose configuration
+        config.status = check_compose_status(config.local_path)
+        db.session.commit()
         flash(f'Error stopping Docker Compose: {output}', 'danger')
 
-    return redirect(url_for('docker.view_config', id=id))
+    # Redirect to the operation log page
+    return redirect(url_for('docker.operation_log', id=operation_log.id))
 
 @docker_bp.route('/docker/restart/<int:id>', methods=['POST'])
 @login_required
@@ -247,17 +294,39 @@ def restart_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    success, output = restart_compose(config.local_path)
+    # Create an operation log
+    operation_log = DockerOperationLog(
+        operation_type='restart_compose',
+        config_id=config.id,
+        status='running'
+    )
+    db.session.add(operation_log)
+    db.session.commit()
+
+    # Update config status to indicate it's being restarted
+    config.status = 'restarting'
+    db.session.commit()
+
+    # Run the compose command with logging
+    success, output = restart_compose(config.local_path, operation_log)
 
     if success:
+        # Check the actual status of the compose configuration
+        config.status = check_compose_status(config.local_path)
+        db.session.commit()
+
         # Update container information in database
         update_container_info(config.id)
 
         flash('Docker Compose restarted successfully.', 'success')
     else:
+        # Check the actual status of the compose configuration
+        config.status = check_compose_status(config.local_path)
+        db.session.commit()
         flash(f'Error restarting Docker Compose: {output}', 'danger')
 
-    return redirect(url_for('docker.view_config', id=id))
+    # Redirect to the operation log page
+    return redirect(url_for('docker.operation_log', id=operation_log.id))
 
 @docker_bp.route('/docker/logs/<int:id>/<container_id>')
 @login_required
@@ -270,6 +339,19 @@ def container_logs(id, container_id):
 
     return render_template('docker/logs.html', config=config, container=container, logs=logs, success=success)
 
+@docker_bp.route('/docker/operation-log/<int:id>')
+@login_required
+def operation_log(id):
+    """View operation log"""
+    log = DockerOperationLog.query.get_or_404(id)
+
+    # Get the associated config if available
+    config = None
+    if log.config_id:
+        config = DockerComposeConfig.query.get(log.config_id)
+
+    return render_template('docker/operation_log.html', log=log, config=config)
+
 @docker_bp.route('/docker/pull/<int:id>', methods=['POST'])
 @login_required
 @admin_required
@@ -281,14 +363,25 @@ def pull_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    success, output = pull_images(config.local_path)
+    # Create an operation log
+    operation_log = DockerOperationLog(
+        operation_type='pull_images',
+        config_id=config.id,
+        status='running'
+    )
+    db.session.add(operation_log)
+    db.session.commit()
+
+    # Run the compose command with logging
+    success, output = pull_images(config.local_path, operation_log)
 
     if success:
         flash('Images pulled successfully.', 'success')
     else:
         flash(f'Error pulling images: {output}', 'danger')
 
-    return redirect(url_for('docker.view_config', id=id))
+    # Redirect to the operation log page
+    return redirect(url_for('docker.operation_log', id=operation_log.id))
 
 @docker_bp.route('/docker/delete/<int:id>', methods=['POST'])
 @login_required
@@ -558,7 +651,17 @@ def pull_image_route():
             flash('Image name is required.', 'danger')
             return redirect(url_for('docker.pull_image_route'))
 
-        success, output = pull_image(image_name)
+        # Create an operation log
+        operation_log = DockerOperationLog(
+            operation_type='pull_image',
+            image_name=image_name,
+            status='running'
+        )
+        db.session.add(operation_log)
+        db.session.commit()
+
+        # Run the pull command with logging
+        success, output = pull_image(image_name, operation_log)
 
         if success:
             flash(f'Image {image_name} pulled successfully.', 'success')
@@ -567,7 +670,8 @@ def pull_image_route():
         else:
             flash(f'Error pulling image: {output}', 'danger')
 
-        return redirect(url_for('docker.list_images'))
+        # Redirect to the operation log page
+        return redirect(url_for('docker.operation_log', id=operation_log.id))
 
     return render_template('docker/pull_image.html')
 

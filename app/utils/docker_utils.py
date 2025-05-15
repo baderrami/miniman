@@ -203,12 +203,13 @@ def update_compose_file(config_path: str, source_url: str) -> Tuple[bool, str]:
 
         return False, f"Error updating Docker Compose file: {str(e)}"
 
-def run_compose(config_path: str) -> Tuple[bool, str]:
+def run_compose(config_path: str, operation_log=None) -> Tuple[bool, str]:
     """
     Run Docker Compose up
 
     Args:
         config_path (str): Path to Docker Compose file
+        operation_log (DockerOperationLog, optional): Operation log object to record logs
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -217,27 +218,56 @@ def run_compose(config_path: str) -> Tuple[bool, str]:
         # Get the directory containing the compose file
         config_dir = os.path.dirname(config_path)
 
-        # Run docker-compose up -d
-        result = subprocess.run(
+        # Log the start of the operation
+        if operation_log:
+            operation_log.add_log_line(f"Starting docker compose up for {config_path}")
+
+        # Run docker-compose up -d with real-time output
+        process = subprocess.Popen(
             ['docker', 'compose', '-f', config_path, 'up', '-d'],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             cwd=config_dir,
-            check=True
+            bufsize=1,
+            universal_newlines=True
         )
 
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        return False, f"Error: {e.stderr}"
-    except Exception as e:
-        return False, f"Error running Docker Compose: {str(e)}"
+        output = []
+        for line in process.stdout:
+            line = line.strip()
+            output.append(line)
+            if operation_log:
+                operation_log.add_log_line(line)
 
-def stop_compose(config_path: str) -> Tuple[bool, str]:
+        # Wait for the process to complete
+        return_code = process.wait()
+
+        # Check if the command was successful
+        if return_code == 0:
+            if operation_log:
+                operation_log.add_log_line("Docker Compose started successfully")
+                operation_log.complete(True)
+            return True, "\n".join(output)
+        else:
+            if operation_log:
+                operation_log.add_log_line(f"Docker Compose failed with return code {return_code}")
+                operation_log.complete(False)
+            return False, "\n".join(output)
+    except Exception as e:
+        error_message = f"Error running Docker Compose: {str(e)}"
+        if operation_log:
+            operation_log.add_log_line(error_message)
+            operation_log.complete(False)
+        return False, error_message
+
+def stop_compose(config_path: str, operation_log=None) -> Tuple[bool, str]:
     """
     Stop Docker Compose
 
     Args:
         config_path (str): Path to Docker Compose file
+        operation_log (DockerOperationLog, optional): Operation log object to record logs
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -246,27 +276,56 @@ def stop_compose(config_path: str) -> Tuple[bool, str]:
         # Get the directory containing the compose file
         config_dir = os.path.dirname(config_path)
 
-        # Run docker-compose down
-        result = subprocess.run(
+        # Log the start of the operation
+        if operation_log:
+            operation_log.add_log_line(f"Starting docker compose down for {config_path}")
+
+        # Run docker-compose down with real-time output
+        process = subprocess.Popen(
             ['docker', 'compose', '-f', config_path, 'down'],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             cwd=config_dir,
-            check=True
+            bufsize=1,
+            universal_newlines=True
         )
 
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        return False, f"Error: {e.stderr}"
-    except Exception as e:
-        return False, f"Error stopping Docker Compose: {str(e)}"
+        output = []
+        for line in process.stdout:
+            line = line.strip()
+            output.append(line)
+            if operation_log:
+                operation_log.add_log_line(line)
 
-def restart_compose(config_path: str) -> Tuple[bool, str]:
+        # Wait for the process to complete
+        return_code = process.wait()
+
+        # Check if the command was successful
+        if return_code == 0:
+            if operation_log:
+                operation_log.add_log_line("Docker Compose stopped successfully")
+                operation_log.complete(True)
+            return True, "\n".join(output)
+        else:
+            if operation_log:
+                operation_log.add_log_line(f"Docker Compose failed with return code {return_code}")
+                operation_log.complete(False)
+            return False, "\n".join(output)
+    except Exception as e:
+        error_message = f"Error stopping Docker Compose: {str(e)}"
+        if operation_log:
+            operation_log.add_log_line(error_message)
+            operation_log.complete(False)
+        return False, error_message
+
+def restart_compose(config_path: str, operation_log=None) -> Tuple[bool, str]:
     """
     Restart Docker Compose
 
     Args:
         config_path (str): Path to Docker Compose file
+        operation_log (DockerOperationLog, optional): Operation log object to record logs
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -275,20 +334,48 @@ def restart_compose(config_path: str) -> Tuple[bool, str]:
         # Get the directory containing the compose file
         config_dir = os.path.dirname(config_path)
 
-        # Run docker-compose restart
-        result = subprocess.run(
+        # Log the start of the operation
+        if operation_log:
+            operation_log.add_log_line(f"Starting docker compose restart for {config_path}")
+
+        # Run docker-compose restart with real-time output
+        process = subprocess.Popen(
             ['docker', 'compose', '-f', config_path, 'restart'],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             cwd=config_dir,
-            check=True
+            bufsize=1,
+            universal_newlines=True
         )
 
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        return False, f"Error: {e.stderr}"
+        output = []
+        for line in process.stdout:
+            line = line.strip()
+            output.append(line)
+            if operation_log:
+                operation_log.add_log_line(line)
+
+        # Wait for the process to complete
+        return_code = process.wait()
+
+        # Check if the command was successful
+        if return_code == 0:
+            if operation_log:
+                operation_log.add_log_line("Docker Compose restarted successfully")
+                operation_log.complete(True)
+            return True, "\n".join(output)
+        else:
+            if operation_log:
+                operation_log.add_log_line(f"Docker Compose failed with return code {return_code}")
+                operation_log.complete(False)
+            return False, "\n".join(output)
     except Exception as e:
-        return False, f"Error restarting Docker Compose: {str(e)}"
+        error_message = f"Error restarting Docker Compose: {str(e)}"
+        if operation_log:
+            operation_log.add_log_line(error_message)
+            operation_log.complete(False)
+        return False, error_message
 
 def get_container_logs(container_id: str, tail: int = 100) -> Tuple[bool, str]:
     """
@@ -384,12 +471,13 @@ def get_images() -> List[Dict[str, Any]]:
         print(f"Error getting images: {str(e)}")
         return []
 
-def pull_images(config_path: str) -> Tuple[bool, str]:
+def pull_images(config_path: str, operation_log=None) -> Tuple[bool, str]:
     """
     Pull images for a Docker Compose configuration
 
     Args:
         config_path (str): Path to Docker Compose file
+        operation_log (DockerOperationLog, optional): Operation log object to record logs
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -398,20 +486,48 @@ def pull_images(config_path: str) -> Tuple[bool, str]:
         # Get the directory containing the compose file
         config_dir = os.path.dirname(config_path)
 
-        # Run docker-compose pull
-        result = subprocess.run(
+        # Log the start of the operation
+        if operation_log:
+            operation_log.add_log_line(f"Starting docker compose pull for {config_path}")
+
+        # Run docker-compose pull with real-time output
+        process = subprocess.Popen(
             ['docker', 'compose', '-f', config_path, 'pull'],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             cwd=config_dir,
-            check=True
+            bufsize=1,
+            universal_newlines=True
         )
 
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        return False, f"Error: {e.stderr}"
+        output = []
+        for line in process.stdout:
+            line = line.strip()
+            output.append(line)
+            if operation_log:
+                operation_log.add_log_line(line)
+
+        # Wait for the process to complete
+        return_code = process.wait()
+
+        # Check if the command was successful
+        if return_code == 0:
+            if operation_log:
+                operation_log.add_log_line("Docker Compose pull completed successfully")
+                operation_log.complete(True)
+            return True, "\n".join(output)
+        else:
+            if operation_log:
+                operation_log.add_log_line(f"Docker Compose pull failed with return code {return_code}")
+                operation_log.complete(False)
+            return False, "\n".join(output)
     except Exception as e:
-        return False, f"Error pulling images: {str(e)}"
+        error_message = f"Error pulling images: {str(e)}"
+        if operation_log:
+            operation_log.add_log_line(error_message)
+            operation_log.complete(False)
+        return False, error_message
 
 # Container operations
 
@@ -609,29 +725,59 @@ def inspect_container(container_id: str) -> Tuple[bool, Dict[str, Any]]:
 
 # Image operations
 
-def pull_image(image_name: str) -> Tuple[bool, str]:
+def pull_image(image_name: str, operation_log=None) -> Tuple[bool, str]:
     """
     Pull a Docker image
 
     Args:
         image_name (str): Image name (and tag)
+        operation_log (DockerOperationLog, optional): Operation log object to record logs
 
     Returns:
         Tuple[bool, str]: Success status and output
     """
     try:
-        result = subprocess.run(
+        # Log the start of the operation
+        if operation_log:
+            operation_log.add_log_line(f"Starting docker pull for {image_name}")
+
+        # Run docker pull with real-time output
+        process = subprocess.Popen(
             ['docker', 'pull', image_name],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            check=True
+            bufsize=1,
+            universal_newlines=True
         )
 
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        return False, f"Error: {e.stderr}"
+        output = []
+        for line in process.stdout:
+            line = line.strip()
+            output.append(line)
+            if operation_log:
+                operation_log.add_log_line(line)
+
+        # Wait for the process to complete
+        return_code = process.wait()
+
+        # Check if the command was successful
+        if return_code == 0:
+            if operation_log:
+                operation_log.add_log_line(f"Image {image_name} pulled successfully")
+                operation_log.complete(True)
+            return True, "\n".join(output)
+        else:
+            if operation_log:
+                operation_log.add_log_line(f"Image pull failed with return code {return_code}")
+                operation_log.complete(False)
+            return False, "\n".join(output)
     except Exception as e:
-        return False, f"Error pulling image: {str(e)}"
+        error_message = f"Error pulling image: {str(e)}"
+        if operation_log:
+            operation_log.add_log_line(error_message)
+            operation_log.complete(False)
+        return False, error_message
 
 def remove_image(image_id: str, force: bool = False) -> Tuple[bool, str]:
     """
@@ -717,6 +863,68 @@ def inspect_image(image_id: str) -> Tuple[bool, Dict[str, Any]]:
     except Exception as e:
         print(f"Error inspecting image: {str(e)}")
         return False, {}
+
+def check_compose_status(config_path: str) -> str:
+    """
+    Check the status of a Docker Compose configuration
+
+    Args:
+        config_path (str): Path to Docker Compose file
+
+    Returns:
+        str: Status of the configuration ('up', 'down', 'partial', 'error')
+    """
+    try:
+        # Get the directory containing the compose file
+        config_dir = os.path.dirname(config_path)
+
+        # Run docker-compose ps to get the status of the services
+        result = subprocess.run(
+            ['docker', 'compose', '-f', config_path, 'ps', '--format', 'json'],
+            capture_output=True,
+            text=True,
+            cwd=config_dir
+        )
+
+        if result.returncode != 0:
+            return 'error'
+
+        # Parse the JSON output
+        try:
+            if not result.stdout.strip():
+                return 'down'  # No services running
+
+            services = []
+            for line in result.stdout.strip().split('\n'):
+                if line.strip():
+                    services.append(json.loads(line))
+
+            if not services:
+                return 'down'
+
+            # Check the status of each service
+            up_count = 0
+            for service in services:
+                if 'State' in service and service['State'] == 'running':
+                    up_count += 1
+
+            if up_count == 0:
+                return 'down'
+            elif up_count == len(services):
+                return 'up'
+            else:
+                return 'partial'
+        except json.JSONDecodeError:
+            # Fallback to text parsing if JSON parsing fails
+            if 'running' in result.stdout:
+                return 'up'
+            elif not result.stdout.strip() or 'exited' in result.stdout:
+                return 'down'
+            else:
+                return 'partial'
+    except Exception as e:
+        print(f"Error checking compose status: {str(e)}")
+        return 'error'
 
 # Volume operations
 

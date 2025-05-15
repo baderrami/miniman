@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Operation Log - {{ log.operation_type }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Operation Log: {{ log.operation_type }}</h1>
+        {% if config %}
+            <a href="{{ url_for('docker.view_config', id=config.id) }}" class="btn btn-secondary">Back to Configuration</a>
+        {% else %}
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-secondary">Back to Docker</a>
+        {% endif %}
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Operation Information</h5>
+                <span class="badge {% if log.status == 'completed' %}bg-success{% elif log.status == 'running' %}bg-primary{% else %}bg-danger{% endif %}">
+                    {{ log.status }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">Operation Type</dt>
+                <dd class="col-sm-9">{{ log.operation_type }}</dd>
+                
+                {% if config %}
+                <dt class="col-sm-3">Configuration</dt>
+                <dd class="col-sm-9">{{ config.name }}</dd>
+                {% endif %}
+                
+                {% if log.image_name %}
+                <dt class="col-sm-3">Image</dt>
+                <dd class="col-sm-9">{{ log.image_name }}</dd>
+                {% endif %}
+                
+                {% if log.container_id %}
+                <dt class="col-sm-3">Container ID</dt>
+                <dd class="col-sm-9">{{ log.container_id }}</dd>
+                {% endif %}
+                
+                <dt class="col-sm-3">Started</dt>
+                <dd class="col-sm-9">{{ log.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+                
+                {% if log.completed_at %}
+                <dt class="col-sm-3">Completed</dt>
+                <dd class="col-sm-9">{{ log.completed_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+                
+                <dt class="col-sm-3">Duration</dt>
+                <dd class="col-sm-9">{{ (log.completed_at - log.started_at).total_seconds() }} seconds</dd>
+                {% endif %}
+            </dl>
+            
+            {% if log.status == 'running' %}
+            <div class="alert alert-info">
+                This operation is still running. The page will refresh automatically to show updates.
+                <script>
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                </script>
+            </div>
+            {% endif %}
+            
+            {% if config and log.status == 'completed' %}
+            <div class="mt-3">
+                <h6>Configuration Status: 
+                    <span class="badge {% if config.status == 'up' %}bg-success{% elif config.status == 'down' %}bg-secondary{% elif config.status == 'partial' %}bg-warning{% else %}bg-info{% endif %}">
+                        {{ config.status }}
+                    </span>
+                </h6>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Operation Logs</h5>
+        </div>
+        <div class="card-body">
+            {% if log.log_content %}
+                <pre class="bg-dark text-light p-3 rounded" style="max-height: 500px; overflow-y: auto;">{{ log.log_content }}</pre>
+            {% else %}
+                <div class="alert alert-info">
+                    No logs available for this operation.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if config %}
+    <div class="mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2">
+                    {% if config.status == 'up' or config.status == 'partial' %}
+                        <form action="{{ url_for('docker.stop_config', id=config.id) }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger">Stop</button>
+                        </form>
+                        
+                        <form action="{{ url_for('docker.restart_config', id=config.id) }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-warning">Restart</button>
+                        </form>
+                    {% elif config.status == 'down' %}
+                        <form action="{{ url_for('docker.run_config', id=config.id) }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-success">Start</button>
+                        </form>
+                    {% endif %}
+                    
+                    <form action="{{ url_for('docker.pull_config', id=config.id) }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-info">Pull Images</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

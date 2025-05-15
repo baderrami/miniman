@@ -12,16 +12,18 @@ class DockerComposeConfig(db.Model):
     source_url = db.Column(db.String(255), nullable=False)
     local_path = db.Column(db.String(255), nullable=True)
     is_active = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(64), default='down')  # 'up', 'down', 'partial', 'error'
     last_checked = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
     update_available = db.Column(db.Boolean, default=False)
 
-    def __init__(self, name, source_url, description=None, local_path=None, is_active=False):
+    def __init__(self, name, source_url, description=None, local_path=None, is_active=False, status='down'):
         self.name = name
         self.source_url = source_url
         self.description = description
         self.local_path = local_path
         self.is_active = is_active
+        self.status = status
         self.last_checked = datetime.utcnow()
         self.last_updated = datetime.utcnow()
         self.update_available = False
@@ -122,3 +124,42 @@ class DockerNetwork(db.Model):
 
     def __repr__(self):
         return f'<DockerNetwork {self.name}>'
+
+class DockerOperationLog(db.Model):
+    """Docker operation log model"""
+    __tablename__ = 'docker_operation_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    operation_type = db.Column(db.String(64))  # 'run_compose', 'pull_images', etc.
+    config_id = db.Column(db.Integer, db.ForeignKey('docker_compose_configs.id'), nullable=True)
+    container_id = db.Column(db.String(64), nullable=True)
+    image_name = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(64))  # 'running', 'completed', 'failed'
+    log_content = db.Column(db.Text, nullable=True)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    config = db.relationship('DockerComposeConfig', backref=db.backref('operation_logs', lazy='dynamic'))
+
+    def __init__(self, operation_type, config_id=None, container_id=None, image_name=None, status='running'):
+        self.operation_type = operation_type
+        self.config_id = config_id
+        self.container_id = container_id
+        self.image_name = image_name
+        self.status = status
+        self.started_at = datetime.utcnow()
+        self.log_content = ''
+
+    def add_log_line(self, line):
+        """Add a line to the log content"""
+        if self.log_content:
+            self.log_content += '\n'
+        self.log_content += line
+
+    def complete(self, success=True):
+        """Mark the operation as completed"""
+        self.status = 'completed' if success else 'failed'
+        self.completed_at = datetime.utcnow()
+
+    def __repr__(self):
+        return f'<DockerOperationLog {self.operation_type} {self.status}>'
