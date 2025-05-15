@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Container Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Container Details</h1>
+        <div>
+            <a href="{{ url_for('docker.list_containers') }}" class="btn btn-secondary">Back to Containers</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    {% if container %}
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Container Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-4">ID</dt>
+                            <dd class="col-sm-8">{{ container.Id[:12] }}</dd>
+                            
+                            <dt class="col-sm-4">Name</dt>
+                            <dd class="col-sm-8">{{ container.Name }}</dd>
+                            
+                            <dt class="col-sm-4">Image</dt>
+                            <dd class="col-sm-8">{{ container.Config.Image }}</dd>
+                            
+                            <dt class="col-sm-4">Status</dt>
+                            <dd class="col-sm-8">
+                                {% if container.State.Running %}
+                                    <span class="badge bg-success">Running</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Stopped</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-4">Created</dt>
+                            <dd class="col-sm-8">{{ container.Created }}</dd>
+                            
+                            <dt class="col-sm-4">Ports</dt>
+                            <dd class="col-sm-8">
+                                {% if container.NetworkSettings.Ports %}
+                                    <ul class="list-unstyled">
+                                        {% for port, bindings in container.NetworkSettings.Ports.items() %}
+                                            {% if bindings %}
+                                                {% for binding in bindings %}
+                                                    <li>{{ binding.HostIp }}:{{ binding.HostPort }} -> {{ port }}</li>
+                                                {% endfor %}
+                                            {% else %}
+                                                <li>{{ port }} (not published)</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    No ports exposed
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-4">Networks</dt>
+                            <dd class="col-sm-8">
+                                {% if container.NetworkSettings.Networks %}
+                                    <ul class="list-unstyled">
+                                        {% for network_name, network in container.NetworkSettings.Networks.items() %}
+                                            <li>{{ network_name }} ({{ network.IPAddress }})</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    No networks
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-4">Volumes</dt>
+                            <dd class="col-sm-8">
+                                {% if container.Mounts %}
+                                    <ul class="list-unstyled">
+                                        {% for mount in container.Mounts %}
+                                            <li>{{ mount.Source }} -> {{ mount.Destination }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    No volumes
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            {% if container.State.Running %}
+                                <form action="{{ url_for('docker.stop_container_route', container_id=container.Id) }}" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-warning w-100">Stop Container</button>
+                                </form>
+                                
+                                <form action="{{ url_for('docker.restart_container_route', container_id=container.Id) }}" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-info w-100">Restart Container</button>
+                                </form>
+                            {% else %}
+                                <form action="{{ url_for('docker.start_container_route', container_id=container.Id) }}" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-success w-100">Start Container</button>
+                                </form>
+                            {% endif %}
+                            
+                            <a href="{{ url_for('docker.exec_container', container_id=container.Id) }}" class="btn btn-secondary w-100">Execute Command</a>
+                            
+                            <form action="{{ url_for('docker.remove_container_route', container_id=container.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to remove this container?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="force" value="false">
+                                <button type="submit" class="btn btn-danger w-100">Remove Container</button>
+                            </form>
+                            
+                            <form action="{{ url_for('docker.remove_container_route', container_id=container.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to force remove this container?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="force" value="true">
+                                <button type="submit" class="btn btn-outline-danger w-100">Force Remove Container</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Container Logs</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-dark text-light p-3" style="max-height: 400px; overflow-y: auto;">{{ logs }}</pre>
+                    </div>
+                </div>
+            </div>
+            
+            {% if stats %}
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Container Stats</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">CPU Usage</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>{{ stats.CPUPerc }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Memory Usage</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>{{ stats.MemUsage }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Network I/O</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>{{ stats.NetIO }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Block I/O</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>{{ stats.BlockIO }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="alert alert-danger">
+            Container not found or error retrieving container details.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

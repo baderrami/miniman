@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Docker Networks{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Docker Networks</h1>
+        <div>
+            <a href="{{ url_for('docker.create_network_route') }}" class="btn btn-success">Create Network</a>
+            <a href="{{ url_for('docker.connect_container_to_network_route') }}" class="btn btn-info">Connect Container</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Network Management</h5>
+        </div>
+        <div class="card-body">
+            <p>Manage your Docker networks - view details, create, and remove networks, and connect containers to networks.</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Networks</h5>
+        </div>
+        <div class="card-body">
+            {% if networks %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Driver</th>
+                                <th>Scope</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for network in networks %}
+                                <tr>
+                                    <td>{{ network.id[:12] }}</td>
+                                    <td>{{ network.name }}</td>
+                                    <td>{{ network.driver }}</td>
+                                    <td>{{ network.scope }}</td>
+                                    <td>{{ network.created }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('docker.view_network', network_id=network.id) }}" class="btn btn-sm btn-primary">View</a>
+                                            
+                                            <form action="{{ url_for('docker.remove_network_route', network_id=network.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this network?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                            </form>
+                                            
+                                            <a href="{{ url_for('docker.connect_container_to_network_route') }}?network_id={{ network.id }}" class="btn btn-sm btn-info">Connect</a>
+                                            <a href="{{ url_for('docker.disconnect_container_from_network_route') }}?network_id={{ network.id }}" class="btn btn-sm btn-warning">Disconnect</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No networks found. <a href="{{ url_for('docker.create_network_route') }}">Create a network</a> to get started.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

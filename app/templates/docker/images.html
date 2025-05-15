@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Docker Images{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Docker Images</h1>
+        <div>
+            <a href="{{ url_for('docker.pull_image_route') }}" class="btn btn-success">Pull Image</a>
+            <a href="{{ url_for('docker.build_image_route') }}" class="btn btn-info">Build Image</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Image Management</h5>
+        </div>
+        <div class="card-body">
+            <p>Manage your Docker images - view details, pull, build, and remove images.</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Images</h5>
+        </div>
+        <div class="card-body">
+            {% if images %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Repository</th>
+                                <th>Tag</th>
+                                <th>Image ID</th>
+                                <th>Created</th>
+                                <th>Size</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for image in images %}
+                                <tr>
+                                    <td>{{ image.repository }}</td>
+                                    <td>{{ image.tag }}</td>
+                                    <td>{{ image.id[:12] }}</td>
+                                    <td>{{ image.created }}</td>
+                                    <td>{{ image.size }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('docker.view_image', image_id=image.id) }}" class="btn btn-sm btn-primary">View</a>
+                                            
+                                            <form action="{{ url_for('docker.remove_image_route', image_id=image.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this image?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="force" value="false">
+                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                            </form>
+                                            
+                                            <form action="{{ url_for('docker.remove_image_route', image_id=image.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to force remove this image?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="force" value="true">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Force</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No images found. <a href="{{ url_for('docker.pull_image_route') }}">Pull an image</a> to get started.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

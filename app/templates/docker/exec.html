@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Execute Command in Container{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Execute Command in Container</h1>
+        <div>
+            <a href="{{ url_for('docker.view_container', container_id=container_id) }}" class="btn btn-secondary">Back to Container</a>
+            <a href="{{ url_for('docker.list_containers') }}" class="btn btn-outline-secondary">All Containers</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Container: {{ container_id }}</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.exec_container', container_id=container_id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="command" class="form-label">Command</label>
+                    <input type="text" class="form-control" id="command" name="command" placeholder="e.g., ls -la" required>
+                    <div class="form-text">Enter the command to execute in the container.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Execute</button>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h6>Common Commands:</h6>
+                <ul>
+                    <li><code>ls -la</code> - List all files in the current directory</li>
+                    <li><code>cat /etc/os-release</code> - Show OS information</li>
+                    <li><code>ps aux</code> - List running processes</li>
+                    <li><code>env</code> - Show environment variables</li>
+                    <li><code>df -h</code> - Show disk usage</li>
+                    <li><code>free -m</code> - Show memory usage</li>
+                    <li><code>netstat -tulpn</code> - Show network connections</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

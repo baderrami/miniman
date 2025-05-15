@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Volume Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Volume Details</h1>
+        <div>
+            <a href="{{ url_for('docker.list_volumes') }}" class="btn btn-secondary">Back to Volumes</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    {% if volume %}
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Volume Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-3">Name</dt>
+                            <dd class="col-sm-9">{{ volume.Name }}</dd>
+                            
+                            <dt class="col-sm-3">Driver</dt>
+                            <dd class="col-sm-9">{{ volume.Driver }}</dd>
+                            
+                            <dt class="col-sm-3">Mountpoint</dt>
+                            <dd class="col-sm-9">{{ volume.Mountpoint }}</dd>
+                            
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">{{ volume.CreatedAt }}</dd>
+                            
+                            <dt class="col-sm-3">Scope</dt>
+                            <dd class="col-sm-9">{{ volume.Scope }}</dd>
+                            
+                            {% if volume.Options %}
+                                <dt class="col-sm-3">Options</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for key, value in volume.Options.items() %}
+                                            <li><strong>{{ key }}</strong>: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if volume.Labels %}
+                                <dt class="col-sm-3">Labels</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for key, value in volume.Labels.items() %}
+                                            <li><strong>{{ key }}</strong>: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if volume.UsageData %}
+                                <dt class="col-sm-3">Usage</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        <li><strong>Size:</strong> {{ volume.UsageData.Size }}</li>
+                                        <li><strong>Reference Count:</strong> {{ volume.UsageData.RefCount }}</li>
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <form action="{{ url_for('docker.remove_volume_route', volume_name=volume.Name) }}" method="post" onsubmit="return confirm('Are you sure you want to remove this volume? All data will be lost.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="force" value="false">
+                                <button type="submit" class="btn btn-danger w-100">Remove Volume</button>
+                            </form>
+                            
+                            <form action="{{ url_for('docker.remove_volume_route', volume_name=volume.Name) }}" method="post" onsubmit="return confirm('Are you sure you want to force remove this volume? All data will be lost, even if the volume is in use.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="force" value="true">
+                                <button type="submit" class="btn btn-outline-danger w-100">Force Remove Volume</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if volume.Mountpoint %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Mountpoint</h5>
+                </div>
+                <div class="card-body">
+                    <p>The volume is mounted at the following location on the host:</p>
+                    <div class="bg-light p-3 rounded">
+                        <code>{{ volume.Mountpoint }}</code>
+                    </div>
+                    <div class="alert alert-warning mt-3">
+                        <h6>Warning:</h6>
+                        <p>Directly modifying files in this location may cause data inconsistency. It's recommended to use Docker containers to access volume data.</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-danger">
+            Volume not found or error retrieving volume details.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Image Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Image Details</h1>
+        <div>
+            <a href="{{ url_for('docker.list_images') }}" class="btn btn-secondary">Back to Images</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    {% if image %}
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Image Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-3">ID</dt>
+                            <dd class="col-sm-9">{{ image.Id }}</dd>
+                            
+                            <dt class="col-sm-3">Repository Tags</dt>
+                            <dd class="col-sm-9">
+                                {% if image.RepoTags %}
+                                    <ul class="list-unstyled">
+                                        {% for tag in image.RepoTags %}
+                                            <li>{{ tag }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted">None</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">{{ image.Created }}</dd>
+                            
+                            <dt class="col-sm-3">Size</dt>
+                            <dd class="col-sm-9">{{ (image.Size / 1024 / 1024)|round(2) }} MB</dd>
+                            
+                            <dt class="col-sm-3">Architecture</dt>
+                            <dd class="col-sm-9">{{ image.Architecture }}</dd>
+                            
+                            <dt class="col-sm-3">OS</dt>
+                            <dd class="col-sm-9">{{ image.Os }}</dd>
+                            
+                            {% if image.Config and image.Config.Env %}
+                                <dt class="col-sm-3">Environment</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for env in image.Config.Env %}
+                                            <li><code>{{ env }}</code></li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if image.Config and image.Config.ExposedPorts %}
+                                <dt class="col-sm-3">Exposed Ports</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for port in image.Config.ExposedPorts %}
+                                            <li>{{ port }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if image.Config and image.Config.Volumes %}
+                                <dt class="col-sm-3">Volumes</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for volume in image.Config.Volumes %}
+                                            <li>{{ volume }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if image.Config and image.Config.Cmd %}
+                                <dt class="col-sm-3">Command</dt>
+                                <dd class="col-sm-9">
+                                    <code>{{ image.Config.Cmd|join(' ') }}</code>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if image.Config and image.Config.Entrypoint %}
+                                <dt class="col-sm-3">Entrypoint</dt>
+                                <dd class="col-sm-9">
+                                    <code>{{ image.Config.Entrypoint|join(' ') }}</code>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if image.Config and image.Config.WorkingDir %}
+                                <dt class="col-sm-3">Working Directory</dt>
+                                <dd class="col-sm-9">{{ image.Config.WorkingDir }}</dd>
+                            {% endif %}
+                            
+                            {% if image.Config and image.Config.Labels %}
+                                <dt class="col-sm-3">Labels</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for key, value in image.Config.Labels.items() %}
+                                            <li><strong>{{ key }}</strong>: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <form action="{{ url_for('docker.remove_image_route', image_id=image.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to remove this image?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="force" value="false">
+                                <button type="submit" class="btn btn-danger w-100">Remove Image</button>
+                            </form>
+                            
+                            <form action="{{ url_for('docker.remove_image_route', image_id=image.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to force remove this image?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="force" value="true">
+                                <button type="submit" class="btn btn-outline-danger w-100">Force Remove Image</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if image.RootFS %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Layers</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for layer in image.RootFS.Layers %}
+                            <li class="list-group-item">{{ layer }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+        
+        {% if image.History %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Created</th>
+                                    <th>Command</th>
+                                    <th>Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in image.History %}
+                                    <tr>
+                                        <td>{{ item.Created }}</td>
+                                        <td>
+                                            <code>{{ item.CreatedBy }}</code>
+                                        </td>
+                                        <td>{{ (item.Size / 1024 / 1024)|round(2) }} MB</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-danger">
+            Image not found or error retrieving image details.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

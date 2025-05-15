@@ -5,9 +5,11 @@ Mini Manager is an automated solution for turning Linux devices into fully funct
 - **Automated WiFi Access Point Provisioning**: Transform any compatible Linux device into a WiFi hotspot
 - **Web-Based Management Interface**: Control your device through an intuitive browser interface
 - **Network Management Tools**: Configure interfaces, monitor network status, and diagnose issues
+- **Comprehensive Docker Management**: Manage containers, images, volumes, and networks through a user-friendly interface
 - **Offline Operation**: Fully functional without internet connectivity
 - **System Reset Functionality**: Easily restore to factory defaults when needed
 - **Local Resource Caching**: All required resources stored locally for reliability
+- **Mobile-Friendly Design**: Access and manage your system from any device
 
 ## Hardware Requirements
 - Linux device (physical or virtual) with:

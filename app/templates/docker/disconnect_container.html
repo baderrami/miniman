@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Disconnect Container from Network{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Disconnect Container from Network</h1>
+        <div>
+            <a href="{{ url_for('docker.list_networks') }}" class="btn btn-secondary">Back to Networks</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Disconnect a Container from a Network</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.disconnect_container_from_network_route') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="container_id" class="form-label">Container</label>
+                    <select class="form-select" id="container_id" name="container_id" required>
+                        <option value="" selected disabled>Select a container</option>
+                        {% for container in containers %}
+                            <option value="{{ container.id }}">{{ container.name }} ({{ container.id[:12] }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Select the container to disconnect from the network.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="network_id" class="form-label">Network</label>
+                    <select class="form-select" id="network_id" name="network_id" required>
+                        <option value="" selected disabled>Select a network</option>
+                        {% for network in networks %}
+                            <option value="{{ network.id }}">{{ network.name }} ({{ network.driver }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Select the network to disconnect the container from.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-warning">Disconnect</button>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h6>Notes:</h6>
+                <ul>
+                    <li>Disconnecting a container from a network will prevent it from communicating with other containers on that network.</li>
+                    <li>The container will still be able to communicate with containers on other networks it is connected to.</li>
+                    <li>You cannot disconnect a container from the default bridge network if it is the only network the container is connected to.</li>
+                    <li>Disconnecting a container from a network does not affect its running state.</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6>Warning:</h6>
+                    <p>Disconnecting a container from a network may disrupt services that depend on network communication. Make sure you understand the implications before proceeding.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

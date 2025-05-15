@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Docker Containers{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Docker Containers</h1>
+        <a href="{{ url_for('docker.docker') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Container Management</h5>
+        </div>
+        <div class="card-body">
+            <p>Manage your Docker containers - view details, start, stop, restart, remove, and execute commands in containers.</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Containers</h5>
+        </div>
+        <div class="card-body">
+            {% if containers %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Image</th>
+                                <th>Status</th>
+                                <th>Ports</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for container in containers %}
+                                <tr>
+                                    <td>{{ container.id[:12] }}</td>
+                                    <td>{{ container.name }}</td>
+                                    <td>{{ container.image }}</td>
+                                    <td>
+                                        {% if 'Up' in container.status %}
+                                            <span class="badge bg-success">Running</span>
+                                        {% elif 'Exited' in container.status %}
+                                            <span class="badge bg-danger">Stopped</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ container.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ container.ports }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('docker.view_container', container_id=container.id) }}" class="btn btn-sm btn-primary">View</a>
+                                            
+                                            {% if 'Up' in container.status %}
+                                                <form action="{{ url_for('docker.stop_container_route', container_id=container.id) }}" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-warning">Stop</button>
+                                                </form>
+                                                <form action="{{ url_for('docker.restart_container_route', container_id=container.id) }}" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-info">Restart</button>
+                                                </form>
+                                            {% else %}
+                                                <form action="{{ url_for('docker.start_container_route', container_id=container.id) }}" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-success">Start</button>
+                                                </form>
+                                            {% endif %}
+                                            
+                                            <form action="{{ url_for('docker.remove_container_route', container_id=container.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this container?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="force" value="false">
+                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                            </form>
+                                            
+                                            <a href="{{ url_for('docker.exec_container', container_id=container.id) }}" class="btn btn-sm btn-secondary">Exec</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No containers found.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

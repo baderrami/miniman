@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Connect Container to Network{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Connect Container to Network</h1>
+        <div>
+            <a href="{{ url_for('docker.list_networks') }}" class="btn btn-secondary">Back to Networks</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Connect a Container to a Network</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.connect_container_to_network_route') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="container_id" class="form-label">Container</label>
+                    <select class="form-select" id="container_id" name="container_id" required>
+                        <option value="" selected disabled>Select a container</option>
+                        {% for container in containers %}
+                            <option value="{{ container.id }}">{{ container.name }} ({{ container.id[:12] }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Select the container to connect to the network.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="network_id" class="form-label">Network</label>
+                    <select class="form-select" id="network_id" name="network_id" required>
+                        <option value="" selected disabled>Select a network</option>
+                        {% for network in networks %}
+                            <option value="{{ network.id }}">{{ network.name }} ({{ network.driver }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Select the network to connect the container to.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Connect</button>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h6>Notes:</h6>
+                <ul>
+                    <li>Connecting a container to a network allows it to communicate with other containers on the same network.</li>
+                    <li>Containers can be connected to multiple networks.</li>
+                    <li>The container must be running to connect it to a network.</li>
+                    <li>Some network drivers may have restrictions on which containers can be connected.</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <h6>Network Types:</h6>
+                    <ul class="mb-0">
+                        <li><strong>bridge</strong>: Default network driver that allows containers on the same host to communicate.</li>
+                        <li><strong>host</strong>: Removes network isolation between the container and the host.</li>
+                        <li><strong>overlay</strong>: Connects multiple Docker daemons together for Swarm services.</li>
+                        <li><strong>macvlan</strong>: Assigns a MAC address to a container, making it appear as a physical device on the network.</li>
+                        <li><strong>none</strong>: Disables all networking for the container.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

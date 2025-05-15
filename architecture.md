@@ -62,7 +62,16 @@ This design enables network administrators to manage devices through an intuitiv
     - Configuration backup and restore
     - System reset functionality
 
-4. **API Layer**
+4. **Docker Management Module**
+    - Comprehensive Docker resource management
+    - Container operations (start, stop, restart, remove, exec, logs)
+    - Image operations (pull, build, remove)
+    - Volume operations (create, remove, inspect)
+    - Network operations (create, remove, connect/disconnect containers)
+    - Docker Compose configuration management
+    - Mobile-friendly interface for all Docker operations
+
+5. **API Layer**
     - RESTful endpoints for programmatic control
     - Status reporting interfaces
     - Configuration management endpoints

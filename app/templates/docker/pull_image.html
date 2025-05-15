@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Pull Docker Image{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Pull Docker Image</h1>
+        <div>
+            <a href="{{ url_for('docker.list_images') }}" class="btn btn-secondary">Back to Images</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Pull an Image from a Registry</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.pull_image_route') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="image_name" class="form-label">Image Name</label>
+                    <input type="text" class="form-control" id="image_name" name="image_name" placeholder="e.g., nginx:latest" required>
+                    <div class="form-text">Enter the image name and tag to pull from Docker Hub or another registry.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Pull Image</button>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h6>Examples:</h6>
+                <ul>
+                    <li><code>nginx:latest</code> - Latest version of Nginx</li>
+                    <li><code>ubuntu:20.04</code> - Ubuntu 20.04</li>
+                    <li><code>postgres:13</code> - PostgreSQL 13</li>
+                    <li><code>redis:alpine</code> - Redis using Alpine Linux</li>
+                    <li><code>registry.example.com/myapp:1.0</code> - Image from a private registry</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <h6>Note:</h6>
+                    <p>Pulling images may take some time depending on the image size and your internet connection speed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

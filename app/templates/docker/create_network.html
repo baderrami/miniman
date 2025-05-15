@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Create Docker Network{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Create Docker Network</h1>
+        <div>
+            <a href="{{ url_for('docker.list_networks') }}" class="btn btn-secondary">Back to Networks</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Create a New Network</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.create_network_route') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="network_name" class="form-label">Network Name</label>
+                    <input type="text" class="form-control" id="network_name" name="network_name" placeholder="e.g., my-network" required>
+                    <div class="form-text">Enter a name for the network. Use only letters, numbers, dashes, and underscores.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="driver" class="form-label">Driver</label>
+                    <select class="form-select" id="driver" name="driver">
+                        <option value="bridge" selected>bridge</option>
+                        <option value="host">host</option>
+                        <option value="overlay">overlay</option>
+                        <option value="macvlan">macvlan</option>
+                        <option value="none">none</option>
+                    </select>
+                    <div class="form-text">Select the network driver to use. The default is 'bridge'.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="subnet" class="form-label">Subnet (Optional)</label>
+                    <input type="text" class="form-control" id="subnet" name="subnet" placeholder="e.g., 192.168.0.0/24">
+                    <div class="form-text">Enter a subnet in CIDR notation (e.g., 192.168.0.0/24).</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="gateway" class="form-label">Gateway (Optional)</label>
+                    <input type="text" class="form-control" id="gateway" name="gateway" placeholder="e.g., 192.168.0.1">
+                    <div class="form-text">Enter a gateway IP address for the subnet.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Create Network</button>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h6>Notes:</h6>
+                <ul>
+                    <li>Networks allow containers to communicate with each other and with the outside world.</li>
+                    <li>The bridge driver is the default and creates a private network internal to the host.</li>
+                    <li>The host driver removes network isolation between the container and the host.</li>
+                    <li>The overlay driver creates a network that spans multiple Docker hosts.</li>
+                    <li>The macvlan driver assigns a MAC address to a container, making it appear as a physical device on the network.</li>
+                    <li>The none driver disables all networking for the container.</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <h6>Subnet and Gateway:</h6>
+                    <p>If you don't specify a subnet and gateway, Docker will automatically assign them. However, if you need specific IP addressing, you can specify them here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

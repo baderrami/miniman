@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Build Docker Image{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Build Docker Image</h1>
+        <div>
+            <a href="{{ url_for('docker.list_images') }}" class="btn btn-secondary">Back to Images</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Build an Image from a Dockerfile</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('docker.build_image_route') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label for="dockerfile_path" class="form-label">Dockerfile Path</label>
+                    <input type="text" class="form-control" id="dockerfile_path" name="dockerfile_path" placeholder="e.g., /path/to/dockerfile/directory" required>
+                    <div class="form-text">Enter the path to the directory containing the Dockerfile.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="tag" class="form-label">Image Tag</label>
+                    <input type="text" class="form-control" id="tag" name="tag" placeholder="e.g., myapp:1.0" required>
+                    <div class="form-text">Enter a tag for the image (name:tag format).</div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Build Image</button>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h6>Notes:</h6>
+                <ul>
+                    <li>The directory must contain a file named <code>Dockerfile</code>.</li>
+                    <li>The build context will be the directory containing the Dockerfile.</li>
+                    <li>Building an image may take some time depending on the complexity of the Dockerfile.</li>
+                    <li>Make sure the user running the application has permission to access the Dockerfile path.</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <h6>Example Dockerfile:</h6>
+                    <pre class="bg-light p-3">FROM nginx:alpine
+COPY ./html /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
