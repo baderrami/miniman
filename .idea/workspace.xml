@@ -4,13 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/utils/websocket_manager.py" afterDir="false" />
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Refactor WebSocket handling for Docker operations&#10;&#10;Centralized WebSocket management using a new `websocket_manager` module, decoupling WebSocket logic from Flask-SocketIO. Simplified event handlers, added background task utilities, and improved log handling for real-time Docker feedback.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/controllers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/controllers/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker/logger.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/logger.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/architecture.md" beforeDir="false" afterPath="$PROJECT_DIR$/architecture.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/controllers/system.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/controllers/system.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/docker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/templates/docker/logs.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/templates/docker/view_container.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/docker/view_container.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/templates/system.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/system.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/docker/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/docker/logger.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -150,7 +154,7 @@
       <workItem from="1746954833280" duration="2215000" />
       <workItem from="1747320827162" duration="903000" />
       <workItem from="1747337830245" duration="3425000" />
-      <workItem from="1747396126630" duration="3208000" />
+      <workItem from="1747396126630" duration="8994000" />
     </task>
     <task id="LOCAL-00001" summary="Ensure noninteractive package installation and preconfigure iptables  &#10;&#10;Pre-configured iptables-persistent to skip interactive prompts and set the DEBIAN_FRONTEND to noninteractive to streamline package installation. This prevents installation scripts from pausing for user input, making the provisioning process fully automated.">
       <option name="closed" value="true" />
@@ -312,7 +316,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747395933407</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="Refactor WebSocket handling for Docker operations&#10;&#10;Centralized WebSocket management using a new `websocket_manager` module, decoupling WebSocket logic from Flask-SocketIO. Simplified event handlers, added background task utilities, and improved log handling for real-time Docker feedback.">
+      <option name="closed" value="true" />
+      <created>1747399650746</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1747399650746</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -362,7 +374,8 @@
     <MESSAGE value="Add DockerOperationLog model to Flask shell and DB init&#10;&#10;Updated `run.py` to include the `DockerOperationLog` model in the Flask shell context and database initialization. Ensured the table is created during the setup process, enhancing logging capabilities for Docker operations." />
     <MESSAGE value="Remove unused Docker utilities code&#10;&#10;The `docker_utils.py` file containing various Docker-related utility functions has been completely removed. This cleanup eliminates obsolete or redundant code, ensuring a leaner codebase." />
     <MESSAGE value="Add WebSocket-based real-time Docker logs and UI improvements&#10;&#10;Implemented WebSocket support for real-time streaming of Docker logs. Updated templates to include an interactive log viewer with auto-scroll, clear logs, and start/stop streaming functionality. Refactored and cleaned up unused Docker utility files, improving code organization and maintainability." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add WebSocket-based real-time Docker logs and UI improvements&#10;&#10;Implemented WebSocket support for real-time streaming of Docker logs. Updated templates to include an interactive log viewer with auto-scroll, clear logs, and start/stop streaming functionality. Refactored and cleaned up unused Docker utility files, improving code organization and maintainability." />
+    <MESSAGE value="Refactor WebSocket handling for Docker operations&#10;&#10;Centralized WebSocket management using a new `websocket_manager` module, decoupling WebSocket logic from Flask-SocketIO. Simplified event handlers, added background task utilities, and improved log handling for real-time Docker feedback." />
+    <option name="LAST_COMMIT_MESSAGE" value="" />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
@@ -372,6 +385,6 @@
     <SUITE FILE_PATH="coverage/miniman$test_all_tables.coverage" NAME="test_all_tables Coverage Results" MODIFIED="1747171556949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$init_all_tables.coverage" NAME="init_all_tables Coverage Results" MODIFIED="1747239180234" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$test_docker_tables.coverage" NAME="test_docker_tables Coverage Results" MODIFIED="1747249776205" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747398526757" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747405073117" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

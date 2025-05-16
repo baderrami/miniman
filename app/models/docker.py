@@ -58,7 +58,11 @@ class DockerContainer(db.Model):
     def get_ports(self):
         """Get ports as a dictionary"""
         if self.ports:
-            return json.loads(self.ports)
+            try:
+                return json.loads(self.ports)
+            except json.JSONDecodeError as e:
+                print(f"Error parsing ports JSON for container {self.container_id}: {e}")
+                return {}
         return {}
 
     def __repr__(self):
@@ -124,42 +128,3 @@ class DockerNetwork(db.Model):
 
     def __repr__(self):
         return f'<DockerNetwork {self.name}>'
-
-class DockerOperationLog(db.Model):
-    """Docker operation log model"""
-    __tablename__ = 'docker_operation_logs'
-
-    id = db.Column(db.Integer, primary_key=True)
-    operation_type = db.Column(db.String(64))  # 'run_compose', 'pull_images', etc.
-    config_id = db.Column(db.Integer, db.ForeignKey('docker_compose_configs.id'), nullable=True)
-    container_id = db.Column(db.String(64), nullable=True)
-    image_name = db.Column(db.String(255), nullable=True)
-    status = db.Column(db.String(64))  # 'running', 'completed', 'failed'
-    log_content = db.Column(db.Text, nullable=True)
-    started_at = db.Column(db.DateTime, default=datetime.utcnow)
-    completed_at = db.Column(db.DateTime, nullable=True)
-
-    config = db.relationship('DockerComposeConfig', backref=db.backref('operation_logs', lazy='dynamic'))
-
-    def __init__(self, operation_type, config_id=None, container_id=None, image_name=None, status='running'):
-        self.operation_type = operation_type
-        self.config_id = config_id
-        self.container_id = container_id
-        self.image_name = image_name
-        self.status = status
-        self.started_at = datetime.utcnow()
-        self.log_content = ''
-
-    def add_log_line(self, line):
-        """Add a line to the log content"""
-        if self.log_content:
-            self.log_content += '\n'
-        self.log_content += line
-
-    def complete(self, success=True):
-        """Mark the operation as completed"""
-        self.status = 'completed' if success else 'failed'
-        self.completed_at = datetime.utcnow()
-
-    def __repr__(self):
-        return f'<DockerOperationLog {self.operation_type} {self.status}>'

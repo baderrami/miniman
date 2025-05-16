@@ -345,8 +345,14 @@
             // Keep initial logs but clear any previous streaming logs
             if (initialLogs) {
                 // We don't remove initialLogs completely to maintain the structure
-                const streamingLogs = logContainer.querySelectorAll('.log-line:not(:has(#initial-logs *))');
-                streamingLogs.forEach(el => el.remove());
+                // Get all log lines
+                const allLogLines = logContainer.querySelectorAll('.log-line');
+                // Remove only those that are not part of initialLogs
+                allLogLines.forEach(el => {
+                    if (!initialLogs.contains(el)) {
+                        el.remove();
+                    }
+                });
             }
 
             // Add a log line indicating streaming is starting
@@ -510,6 +516,15 @@
         } else {
             console.log('Container not running, not auto-starting streaming');
         }
+
+        // Set up a periodic check to restart streaming if it stopped unexpectedly
+        // This ensures logs continue to update even if the WebSocket connection was interrupted
+        setInterval(function() {
+            if (containerRunning && !isStreaming && hasJoinedRoom) {
+                console.log('Detected container running but not streaming, restarting stream');
+                startStreaming();
+            }
+        }, 10000); // Check every 10 seconds
     });
 </script>
 {% endblock %}

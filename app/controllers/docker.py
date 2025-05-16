@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required
 from app import db
-from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork, \
-    DockerOperationLog
+import json
+from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork
 from app.utils import websocket_manager
 from app.utils.docker import (
     ensure_docker_installed, install_docker, download_compose_file,
@@ -15,7 +15,6 @@ from app.utils.docker import (
     inspect_volume, get_networks, create_network, remove_network,
     inspect_network, connect_container_to_network, disconnect_container_from_network, check_compose_status
 )
-from app.utils.docker.logger import create_logger
 from app.controllers.auth import admin_required
 import os
 from datetime import datetime
@@ -24,90 +23,7 @@ from datetime import datetime
 docker_bp = Blueprint('docker', __name__)
 
 # Register Docker-specific WebSocket event handlers
-@websocket_manager.register_event_handler('stream_container_logs')
-def handle_stream_container_logs(data):
-    """
-    Handle streaming container logs.
-
-    Args:
-        data (dict): Data containing container ID and room information
-    """
-    container_id = data.get('container_id')
-    room = data.get('room')
-
-    print(f"Received request to stream logs for container {container_id} in room {room}")
-
-    if not container_id or not room:
-        websocket_manager.emit_event('status', {'msg': 'Missing container_id or room'}, room)
-        return
-
-    # Send a message to indicate streaming is starting
-    websocket_manager.emit_container_log(
-        container_id=container_id,
-        line=f'Starting log streaming for container {container_id}...',
-        status='info',
-        room=room
-    )
-
-    # Create a WebSocket logger for this container
-    logger = create_logger(
-        operation_type='stream_container_logs',
-        container_id=container_id,
-        use_websocket=True,
-        room=room,
-        use_db=False  # Don't create a DB log for streaming logs
-    )
-
-    # Import the container manager
-    from app.utils.docker.container import ContainerManager
-
-    # Create a container manager and stream logs
-    container_manager = ContainerManager()
-
-    # Define the streaming function
-    def stream_logs_thread():
-        try:
-            print(f"Starting log streaming thread for container {container_id}")
-            # Send an initial message to confirm the thread has started
-            websocket_manager.emit_container_log(
-                container_id=container_id,
-                line='Log streaming thread started',
-                status='info',
-                room=room
-            )
-
-            # Stream the logs
-            container_manager.stream_container_logs(container_id, logger)
-
-            # If we get here, the streaming has completed normally
-            print(f"Log streaming completed for container {container_id}")
-            websocket_manager.emit_event('docker_log_complete', {
-                'container_id': container_id,
-                'success': True,
-                'timestamp': datetime.utcnow().isoformat(),
-                'status': 'completed'
-            }, room)
-
-        except Exception as e:
-            print(f"Error streaming logs for container {container_id}: {str(e)}")
-            websocket_manager.emit_container_log(
-                container_id=container_id,
-                line=f'Error streaming logs: {str(e)}',
-                status='error',
-                room=room
-            )
-
-            websocket_manager.emit_event('docker_log_complete', {
-                'container_id': container_id,
-                'success': False,
-                'error': str(e),
-                'timestamp': datetime.utcnow().isoformat(),
-                'status': 'error'
-            }, room)
-
-    # Run in a background thread to avoid blocking
-    websocket_manager.run_in_background(stream_logs_thread)
-    print(f"Started log streaming thread for container {container_id}")
+# WebSocket event handler for container logs removed as per requirements
 
 @docker_bp.route('/docker')
 @login_required
@@ -226,9 +142,7 @@ def view_config(id):
             if db_container and db_container.config_id == config.id:
                 containers.append(container)
 
-    # Pass the DockerOperationLog model to the template for ordering
-    from app.models.docker import DockerOperationLog
-    return render_template('docker/view_config.html', config=config, containers=containers, DockerOperationLog=DockerOperationLog)
+    return render_template('docker/view_config.html', config=config, containers=containers)
 
 @docker_bp.route('/docker/check-updates/<int:id>', methods=['POST'])
 @login_required
@@ -291,33 +205,12 @@ def run_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    # Create an operation log
-    operation_log = DockerOperationLog(
-        operation_type='run_compose',
-        config_id=config.id,
-        status='running'
-    )
-    db.session.add(operation_log)
-    db.session.commit()
-
-    # Create a WebSocket logger
-    logger = create_logger(
-        operation_type='run_compose',
-        config_id=config.id,
-        use_websocket=True,
-        room=f'docker_config_{config.id}',
-        use_db=False  # We already created the DB log
-    )
-    # Set the log_id from the DB log
-    if hasattr(logger, 'log_id'):
-        logger.log_id = operation_log.id
-
     # Update config status to indicate it's being deployed
     config.status = 'deploying'
     db.session.commit()
 
-    # Run the compose command with logging
-    success, output = run_compose(config.local_path, logger)
+    # Run the compose command (logging removed)
+    success, output = run_compose(config.local_path, None)
 
     if success:
         config.is_active = True
@@ -334,8 +227,8 @@ def run_config(id):
         db.session.commit()
         flash(f'Error starting Docker Compose: {output}', 'danger')
 
-    # Redirect to the operation log page
-    return redirect(url_for('docker.operation_log', id=operation_log.id))
+    # Redirect to the view config page
+    return redirect(url_for('docker.view_config', id=id))
 
 @docker_bp.route('/docker/stop/<int:id>', methods=['POST'])
 @login_required
@@ -348,33 +241,12 @@ def stop_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    # Create an operation log
-    operation_log = DockerOperationLog(
-        operation_type='stop_compose',
-        config_id=config.id,
-        status='running'
-    )
-    db.session.add(operation_log)
-    db.session.commit()
-
-    # Create a WebSocket logger
-    logger = create_logger(
-        operation_type='stop_compose',
-        config_id=config.id,
-        use_websocket=True,
-        room=f'docker_config_{config.id}',
-        use_db=False  # We already created the DB log
-    )
-    # Set the log_id from the DB log
-    if hasattr(logger, 'log_id'):
-        logger.log_id = operation_log.id
-
     # Update config status to indicate it's being stopped
     config.status = 'stopping'
     db.session.commit()
 
-    # Run the compose command with logging
-    success, output = stop_compose(config.local_path, logger)
+    # Run the compose command (logging removed)
+    success, output = stop_compose(config.local_path, None)
 
     if success:
         config.is_active = False
@@ -392,8 +264,8 @@ def stop_config(id):
         db.session.commit()
         flash(f'Error stopping Docker Compose: {output}', 'danger')
 
-    # Redirect to the operation log page
-    return redirect(url_for('docker.operation_log', id=operation_log.id))
+    # Redirect to the view config page
+    return redirect(url_for('docker.view_config', id=id))
 
 @docker_bp.route('/docker/restart/<int:id>', methods=['POST'])
 @login_required
@@ -406,33 +278,12 @@ def restart_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    # Create an operation log
-    operation_log = DockerOperationLog(
-        operation_type='restart_compose',
-        config_id=config.id,
-        status='running'
-    )
-    db.session.add(operation_log)
-    db.session.commit()
-
-    # Create a WebSocket logger
-    logger = create_logger(
-        operation_type='restart_compose',
-        config_id=config.id,
-        use_websocket=True,
-        room=f'docker_config_{config.id}',
-        use_db=False  # We already created the DB log
-    )
-    # Set the log_id from the DB log
-    if hasattr(logger, 'log_id'):
-        logger.log_id = operation_log.id
-
     # Update config status to indicate it's being restarted
     config.status = 'restarting'
     db.session.commit()
 
-    # Run the compose command with logging
-    success, output = restart_compose(config.local_path, logger)
+    # Run the compose command (logging removed)
+    success, output = restart_compose(config.local_path, None)
 
     if success:
         # Check the actual status of the compose configuration
@@ -449,41 +300,28 @@ def restart_config(id):
         db.session.commit()
         flash(f'Error restarting Docker Compose: {output}', 'danger')
 
-    # Redirect to the operation log page
-    return redirect(url_for('docker.operation_log', id=operation_log.id))
+    # Redirect to the view config page
+    return redirect(url_for('docker.view_config', id=id))
 
 @docker_bp.route('/docker/logs/<int:id>/<container_id>')
 @login_required
 def container_logs(id, container_id):
     """View logs for a container"""
+    # Log-related functionality removed as per requirements
     config = DockerComposeConfig.query.get_or_404(id)
     container = DockerContainer.query.filter_by(container_id=container_id).first_or_404()
 
-    # Get initial logs
-    success, logs = get_container_logs(container_id)
-
-    # Create a room name for this container's logs
+    # Room name is still needed for template rendering
     room_name = f'container_logs_{container_id}'
 
     return render_template('docker/logs.html', 
                           config=config, 
                           container=container, 
-                          logs=logs, 
-                          success=success,
+                          logs=None, 
+                          success=False,
                           room_name=room_name)
 
-@docker_bp.route('/docker/operation-log/<int:id>')
-@login_required
-def operation_log(id):
-    """View operation log"""
-    log = DockerOperationLog.query.get_or_404(id)
-
-    # Get the associated config if available
-    config = None
-    if log.config_id:
-        config = DockerComposeConfig.query.get(log.config_id)
-
-    return render_template('docker/operation_log.html', log=log, config=config)
+# Operation log route removed as per requirements
 
 @docker_bp.route('/docker/pull/<int:id>', methods=['POST'])
 @login_required
@@ -496,37 +334,16 @@ def pull_config(id):
         flash('Configuration file not found.', 'danger')
         return redirect(url_for('docker.view_config', id=id))
 
-    # Create an operation log
-    operation_log = DockerOperationLog(
-        operation_type='pull_images',
-        config_id=config.id,
-        status='running'
-    )
-    db.session.add(operation_log)
-    db.session.commit()
-
-    # Create a WebSocket logger
-    logger = create_logger(
-        operation_type='pull_images',
-        config_id=config.id,
-        use_websocket=True,
-        room=f'docker_config_{config.id}',
-        use_db=False  # We already created the DB log
-    )
-    # Set the log_id from the DB log
-    if hasattr(logger, 'log_id'):
-        logger.log_id = operation_log.id
-
-    # Run the compose command with logging
-    success, output = pull_images(config.local_path, logger)
+    # Run the compose command (logging removed)
+    success, output = pull_images(config.local_path, None)
 
     if success:
         flash('Images pulled successfully.', 'success')
     else:
         flash(f'Error pulling images: {output}', 'danger')
 
-    # Redirect to the operation log page
-    return redirect(url_for('docker.operation_log', id=operation_log.id))
+    # Redirect to the view config page
+    return redirect(url_for('docker.view_config', id=id))
 
 @docker_bp.route('/docker/delete/<int:id>', methods=['POST'])
 @login_required
@@ -573,13 +390,28 @@ def update_container_info(config_id):
         # This is a simplification - in a real implementation, we would need a more robust way
         # to associate containers with configs
         if config.name.lower() in container['name'].lower():
+            # Ensure ports is properly formatted as JSON
+            ports = container['ports']
+            if isinstance(ports, str):
+                try:
+                    # Try to parse it as JSON to validate it
+                    json.loads(ports)
+                    # If it's valid JSON, use it as is
+                    formatted_ports = ports
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, convert it to a JSON string
+                    formatted_ports = json.dumps(ports)
+            else:
+                # If it's not a string, convert it to a JSON string
+                formatted_ports = json.dumps(ports)
+
             db_container = DockerContainer(
                 container_id=container['id'],
                 name=container['name'],
                 image=container['image'],
                 status=container['status'],
                 config_id=config_id,
-                ports=container['ports']
+                ports=formatted_ports
             )
             db.session.add(db_container)
 
@@ -602,25 +434,23 @@ def list_containers():
 @login_required
 def view_container(container_id):
     """View container details"""
+    # Log-related functionality removed as per requirements
     success, container_details = inspect_container(container_id)
 
     if not success:
         flash('Error retrieving container details.', 'danger')
         return redirect(url_for('docker.list_containers'))
 
-    # Get initial logs
-    success, logs = get_container_logs(container_id)
-
     # Get container stats
     stats_success, stats = get_container_stats(container_id)
 
-    # Create a room name for this container's logs
+    # Create a room name for this container's logs (still needed for template)
     room_name = f'container_logs_{container_id}'
 
     return render_template(
         'docker/view_container.html', 
         container=container_details, 
-        logs=logs, 
+        logs=None, 
         stats=stats if stats_success else None,
         room_name=room_name
     )
@@ -836,15 +666,41 @@ def update_all_containers_info(containers=None):
             db_container.name = container['name']
             db_container.image = container['image']
             db_container.status = container['status']
-            db_container.ports = container['ports']
+
+            # Ensure ports is properly formatted as JSON
+            ports = container['ports']
+            if isinstance(ports, str):
+                try:
+                    # Try to parse it as JSON to validate it
+                    json.loads(ports)
+                    # If it's valid JSON, store it as is
+                    db_container.ports = ports
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, store it as a JSON string
+                    db_container.ports = json.dumps(ports)
         else:
             # Add new container
+            # Ensure ports is properly formatted as JSON
+            ports = container['ports']
+            if isinstance(ports, str):
+                try:
+                    # Try to parse it as JSON to validate it
+                    json.loads(ports)
+                    # If it's valid JSON, use it as is
+                    formatted_ports = ports
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, convert it to a JSON string
+                    formatted_ports = json.dumps(ports)
+            else:
+                # If it's not a string, convert it to a JSON string
+                formatted_ports = json.dumps(ports)
+
             db_container = DockerContainer(
                 container_id=container['id'],
                 name=container['name'],
                 image=container['image'],
                 status=container['status'],
-                ports=container['ports']
+                ports=formatted_ports
             )
             db.session.add(db_container)
 
@@ -887,29 +743,8 @@ def pull_image_route():
             flash('Image name is required.', 'danger')
             return redirect(url_for('docker.pull_image_route'))
 
-        # Create an operation log
-        operation_log = DockerOperationLog(
-            operation_type='pull_image',
-            image_name=image_name,
-            status='running'
-        )
-        db.session.add(operation_log)
-        db.session.commit()
-
-        # Create a WebSocket logger
-        logger = create_logger(
-            operation_type='pull_image',
-            image_name=image_name,
-            use_websocket=True,
-            room=f'docker_image_{image_name.replace(":", "_")}',
-            use_db=False  # We already created the DB log
-        )
-        # Set the log_id from the DB log
-        if hasattr(logger, 'log_id'):
-            logger.log_id = operation_log.id
-
-        # Run the pull command with logging
-        success, output = pull_image(image_name, logger)
+        # Run the pull command (logging removed)
+        success, output = pull_image(image_name, None)
 
         if success:
             flash(f'Image {image_name} pulled successfully.', 'success')
@@ -918,8 +753,8 @@ def pull_image_route():
         else:
             flash(f'Error pulling image: {output}', 'danger')
 
-        # Redirect to the operation log page
-        return redirect(url_for('docker.operation_log', id=operation_log.id))
+        # Redirect to the images list page
+        return redirect(url_for('docker.list_images'))
 
     return render_template('docker/pull_image.html')
 
@@ -957,29 +792,8 @@ def build_image_route():
             flash('Dockerfile path and tag are required.', 'danger')
             return redirect(url_for('docker.build_image_route'))
 
-        # Create an operation log
-        operation_log = DockerOperationLog(
-            operation_type='build_image',
-            image_name=tag,
-            status='running'
-        )
-        db.session.add(operation_log)
-        db.session.commit()
-
-        # Create a WebSocket logger
-        logger = create_logger(
-            operation_type='build_image',
-            image_name=tag,
-            use_websocket=True,
-            room=f'docker_image_{tag.replace(":", "_")}',
-            use_db=False  # We already created the DB log
-        )
-        # Set the log_id from the DB log
-        if hasattr(logger, 'log_id'):
-            logger.log_id = operation_log.id
-
-        # Run the build command with logging
-        success, output = build_image(dockerfile_path, tag, logger)
+        # Run the build command (logging removed)
+        success, output = build_image(dockerfile_path, tag, None)
 
         if success:
             flash(f'Image {tag} built successfully.', 'success')

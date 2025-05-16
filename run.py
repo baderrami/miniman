@@ -3,7 +3,7 @@ import os
 from app import create_app, db
 from app.models.user import User
 from app.models.network import NetworkInterface
-from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork, DockerOperationLog
+from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 
@@ -14,8 +14,7 @@ def make_shell_context():
     """
     return dict(db=db, User=User, NetworkInterface=NetworkInterface, 
                 DockerComposeConfig=DockerComposeConfig, DockerContainer=DockerContainer,
-                DockerImage=DockerImage, DockerVolume=DockerVolume, DockerNetwork=DockerNetwork,
-                DockerOperationLog=DockerOperationLog)
+                DockerImage=DockerImage, DockerVolume=DockerVolume, DockerNetwork=DockerNetwork)
 
 def initialize_database(config_name=None):
     """
@@ -48,7 +47,6 @@ def _initialize_db_tables(context_message):
     DockerImage.__table__.create(db.engine, checkfirst=True)
     DockerVolume.__table__.create(db.engine, checkfirst=True)
     DockerNetwork.__table__.create(db.engine, checkfirst=True)
-    DockerOperationLog.__table__.create(db.engine, checkfirst=True)
 
     # Check if admin user exists
     if User.query.filter_by(username='admin').first() is None:
