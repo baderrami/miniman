@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
-from flask_login import login_required, current_user
-from app import db
+from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask_login import login_required
+from flask_socketio import emit, join_room, leave_room
+from app import db, socketio
 from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork, \
     DockerOperationLog
-from app.utils.docker_utils import (
+from app.utils.docker import (
     ensure_docker_installed, install_docker, download_compose_file,
     check_for_updates, update_compose_file, run_compose, stop_compose,
     restart_compose, get_container_logs, get_containers, get_images,
@@ -14,12 +15,48 @@ from app.utils.docker_utils import (
     inspect_volume, get_networks, create_network, remove_network,
     inspect_network, connect_container_to_network, disconnect_container_from_network, check_compose_status
 )
+from app.utils.docker.logger import create_logger
 from app.controllers.auth import admin_required
 import os
 from datetime import datetime
 
 # Create blueprint
 docker_bp = Blueprint('docker', __name__)
+
+# WebSocket event handlers
+@socketio.on('connect')
+def handle_connect():
+    """Handle WebSocket connection."""
+    print('Client connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle WebSocket disconnection."""
+    print('Client disconnected')
+
+@socketio.on('join')
+def handle_join(data):
+    """
+    Handle joining a room for specific Docker operations.
+
+    Args:
+        data (dict): Data containing room information
+    """
+    room = data.get('room', 'docker_logs')
+    join_room(room)
+    emit('status', {'msg': f'Joined room: {room}'}, room=room)
+
+@socketio.on('leave')
+def handle_leave(data):
+    """
+    Handle leaving a room.
+
+    Args:
+        data (dict): Data containing room information
+    """
+    room = data.get('room', 'docker_logs')
+    leave_room(room)
+    emit('status', {'msg': f'Left room: {room}'}, room=room)
 
 @docker_bp.route('/docker')
 @login_required
@@ -212,12 +249,25 @@ def run_config(id):
     db.session.add(operation_log)
     db.session.commit()
 
+    # Create a WebSocket logger
+    logger = create_logger(
+        operation_type='run_compose',
+        config_id=config.id,
+        use_websocket=True,
+        socket_io=socketio,
+        room=f'docker_config_{config.id}',
+        use_db=False  # We already created the DB log
+    )
+    # Set the log_id from the DB log
+    if hasattr(logger, 'log_id'):
+        logger.log_id = operation_log.id
+
     # Update config status to indicate it's being deployed
     config.status = 'deploying'
     db.session.commit()
 
     # Run the compose command with logging
-    success, output = run_compose(config.local_path, operation_log)
+    success, output = run_compose(config.local_path, logger)
 
     if success:
         config.is_active = True
@@ -257,12 +307,25 @@ def stop_config(id):
     db.session.add(operation_log)
     db.session.commit()
 
+    # Create a WebSocket logger
+    logger = create_logger(
+        operation_type='stop_compose',
+        config_id=config.id,
+        use_websocket=True,
+        socket_io=socketio,
+        room=f'docker_config_{config.id}',
+        use_db=False  # We already created the DB log
+    )
+    # Set the log_id from the DB log
+    if hasattr(logger, 'log_id'):
+        logger.log_id = operation_log.id
+
     # Update config status to indicate it's being stopped
     config.status = 'stopping'
     db.session.commit()
 
     # Run the compose command with logging
-    success, output = stop_compose(config.local_path, operation_log)
+    success, output = stop_compose(config.local_path, logger)
 
     if success:
         config.is_active = False
@@ -303,12 +366,25 @@ def restart_config(id):
     db.session.add(operation_log)
     db.session.commit()
 
+    # Create a WebSocket logger
+    logger = create_logger(
+        operation_type='restart_compose',
+        config_id=config.id,
+        use_websocket=True,
+        socket_io=socketio,
+        room=f'docker_config_{config.id}',
+        use_db=False  # We already created the DB log
+    )
+    # Set the log_id from the DB log
+    if hasattr(logger, 'log_id'):
+        logger.log_id = operation_log.id
+
     # Update config status to indicate it's being restarted
     config.status = 'restarting'
     db.session.commit()
 
     # Run the compose command with logging
-    success, output = restart_compose(config.local_path, operation_log)
+    success, output = restart_compose(config.local_path, logger)
 
     if success:
         # Check the actual status of the compose configuration
@@ -372,8 +448,21 @@ def pull_config(id):
     db.session.add(operation_log)
     db.session.commit()
 
+    # Create a WebSocket logger
+    logger = create_logger(
+        operation_type='pull_images',
+        config_id=config.id,
+        use_websocket=True,
+        socket_io=socketio,
+        room=f'docker_config_{config.id}',
+        use_db=False  # We already created the DB log
+    )
+    # Set the log_id from the DB log
+    if hasattr(logger, 'log_id'):
+        logger.log_id = operation_log.id
+
     # Run the compose command with logging
-    success, output = pull_images(config.local_path, operation_log)
+    success, output = pull_images(config.local_path, logger)
 
     if success:
         flash('Images pulled successfully.', 'success')
@@ -660,8 +749,21 @@ def pull_image_route():
         db.session.add(operation_log)
         db.session.commit()
 
+        # Create a WebSocket logger
+        logger = create_logger(
+            operation_type='pull_image',
+            image_name=image_name,
+            use_websocket=True,
+            socket_io=socketio,
+            room=f'docker_image_{image_name.replace(":", "_")}',
+            use_db=False  # We already created the DB log
+        )
+        # Set the log_id from the DB log
+        if hasattr(logger, 'log_id'):
+            logger.log_id = operation_log.id
+
         # Run the pull command with logging
-        success, output = pull_image(image_name, operation_log)
+        success, output = pull_image(image_name, logger)
 
         if success:
             flash(f'Image {image_name} pulled successfully.', 'success')
@@ -709,7 +811,30 @@ def build_image_route():
             flash('Dockerfile path and tag are required.', 'danger')
             return redirect(url_for('docker.build_image_route'))
 
-        success, output = build_image(dockerfile_path, tag)
+        # Create an operation log
+        operation_log = DockerOperationLog(
+            operation_type='build_image',
+            image_name=tag,
+            status='running'
+        )
+        db.session.add(operation_log)
+        db.session.commit()
+
+        # Create a WebSocket logger
+        logger = create_logger(
+            operation_type='build_image',
+            image_name=tag,
+            use_websocket=True,
+            socket_io=socketio,
+            room=f'docker_image_{tag.replace(":", "_")}',
+            use_db=False  # We already created the DB log
+        )
+        # Set the log_id from the DB log
+        if hasattr(logger, 'log_id'):
+            logger.log_id = operation_log.id
+
+        # Run the build command with logging
+        success, output = build_image(dockerfile_path, tag, logger)
 
         if success:
             flash(f'Image {tag} built successfully.', 'success')

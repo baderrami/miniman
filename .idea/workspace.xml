@@ -5,7 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Add DockerOperationLog model to Flask shell and DB init&#10;&#10;Updated `run.py` to include the `DockerOperationLog` model in the Flask shell context and database initialization. Ensured the table is created during the setup process, enhancing logging capabilities for Docker operations.">
+      <change afterPath="$PROJECT_DIR$/app/docker/PLATFORM_COMPATIBILITY.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/base.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/compat.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/compose.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/container.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/image.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/logger.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/network.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/docker/volume.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/controllers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/controllers/docker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/docker_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -342,6 +358,6 @@
     <SUITE FILE_PATH="coverage/miniman$test_all_tables.coverage" NAME="test_all_tables Coverage Results" MODIFIED="1747171556949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$init_all_tables.coverage" NAME="init_all_tables Coverage Results" MODIFIED="1747239180234" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$test_docker_tables.coverage" NAME="test_docker_tables Coverage Results" MODIFIED="1747249776205" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747339224850" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747392141354" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
