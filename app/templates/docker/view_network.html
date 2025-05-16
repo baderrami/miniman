@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Network Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Network Details</h1>
+        <div>
+            <a href="{{ url_for('docker.list_networks') }}" class="btn btn-secondary">Back to Networks</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+    
+    {% if network %}
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Network Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-3">ID</dt>
+                            <dd class="col-sm-9">{{ network.Id }}</dd>
+                            
+                            <dt class="col-sm-3">Name</dt>
+                            <dd class="col-sm-9">{{ network.Name }}</dd>
+                            
+                            <dt class="col-sm-3">Driver</dt>
+                            <dd class="col-sm-9">{{ network.Driver }}</dd>
+                            
+                            <dt class="col-sm-3">Scope</dt>
+                            <dd class="col-sm-9">{{ network.Scope }}</dd>
+                            
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">{{ network.Created }}</dd>
+                            
+                            {% if network.IPAM and network.IPAM.Config %}
+                                <dt class="col-sm-3">IPAM Config</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for config in network.IPAM.Config %}
+                                            <li>
+                                                {% if config.Subnet %}
+                                                    <strong>Subnet:</strong> {{ config.Subnet }}
+                                                {% endif %}
+                                                {% if config.Gateway %}
+                                                    <strong>Gateway:</strong> {{ config.Gateway }}
+                                                {% endif %}
+                                                {% if config.IPRange %}
+                                                    <strong>IP Range:</strong> {{ config.IPRange }}
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if network.Options %}
+                                <dt class="col-sm-3">Options</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for key, value in network.Options.items() %}
+                                            <li><strong>{{ key }}</strong>: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if network.Labels %}
+                                <dt class="col-sm-3">Labels</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        {% for key, value in network.Labels.items() %}
+                                            <li><strong>{{ key }}</strong>: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            {% endif %}
+                            
+                            {% if network.EnableIPv6 %}
+                                <dt class="col-sm-3">IPv6</dt>
+                                <dd class="col-sm-9">Enabled</dd>
+                            {% endif %}
+                            
+                            {% if network.Internal %}
+                                <dt class="col-sm-3">Internal</dt>
+                                <dd class="col-sm-9">Yes</dd>
+                            {% endif %}
+                            
+                            {% if network.Attachable %}
+                                <dt class="col-sm-3">Attachable</dt>
+                                <dd class="col-sm-9">Yes</dd>
+                            {% endif %}
+                            
+                            {% if network.Ingress %}
+                                <dt class="col-sm-3">Ingress</dt>
+                                <dd class="col-sm-9">Yes</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('docker.connect_container_to_network_route') }}?network_id={{ network.Id }}" class="btn btn-info w-100">Connect Container</a>
+                            <a href="{{ url_for('docker.disconnect_container_from_network_route') }}?network_id={{ network.Id }}" class="btn btn-warning w-100">Disconnect Container</a>
+                            
+                            <form action="{{ url_for('docker.remove_network_route', network_id=network.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to remove this network?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-danger w-100">Remove Network</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if network.Containers %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Connected Containers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>IPv4 Address</th>
+                                    <th>IPv6 Address</th>
+                                    <th>MAC Address</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for container_id, container in network.Containers.items() %}
+                                    <tr>
+                                        <td>{{ container_id[:12] }}</td>
+                                        <td>{{ container.Name }}</td>
+                                        <td>{{ container.IPv4Address }}</td>
+                                        <td>{{ container.IPv6Address }}</td>
+                                        <td>{{ container.MacAddress }}</td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('docker.view_container', container_id=container_id) }}" class="btn btn-sm btn-primary">View</a>
+                                                
+                                                <form action="{{ url_for('docker.disconnect_container_from_network_route') }}" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <input type="hidden" name="container_id" value="{{ container_id }}">
+                                                    <input type="hidden" name="network_id" value="{{ network.Id }}">
+                                                    <button type="submit" class="btn btn-sm btn-warning">Disconnect</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Connected Containers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        No containers connected to this network. 
+                        <a href="{{ url_for('docker.connect_container_to_network_route') }}?network_id={{ network.Id }}" class="btn btn-sm btn-info">Connect a Container</a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-danger">
+            Network not found or error retrieving network details.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

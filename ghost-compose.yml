@@ -1,0 +1,51 @@
+services:
+  # MySQL database for Ghost
+  db:
+    image: mysql:8.0
+    platform: linux/arm64/v8
+    volumes:
+      - ghost_db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ghostrootpass
+      MYSQL_DATABASE: ghost
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghostpassword
+    networks:
+      - ghost_network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Ghost CMS
+  ghost:
+    image: ghost:5-alpine
+    platform: linux/arm64/v8
+    depends_on:
+      - db
+    volumes:
+      - ghost_content:/var/lib/ghost/content
+    ports:
+      - "8090:2368"  # Changed from 8080 to 8090 to avoid conflict
+    restart: always
+    environment:
+      # Database connection
+      database__client: mysql
+      database__connection__host: db
+      database__connection__user: ghost
+      database__connection__password: ghostpassword
+      database__connection__database: ghost
+      # Server config
+      url: http://localhost:8090  # Changed to match new port
+      NODE_ENV: development
+      # These will be your admin credentials
+      GHOST_ADMIN_EMAIL: admin@example.com
+      GHOST_ADMIN_PASSWORD: Admin@123!
+    networks:
+      - ghost_network
+
+volumes:
+  ghost_db_data:
+  ghost_content:
+
+networks:
+  ghost_network:
+    driver: bridge

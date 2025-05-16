@@ -1,0 +1,40 @@
+{# Container Actions Component #}
+<div class="card h-100">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-grid gap-2">
+            {% if container.State.Running %}
+                <form action="{{ url_for('docker.stop_container_route', container_id=container.Id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-warning w-100">Stop Container</button>
+                </form>
+
+                <form action="{{ url_for('docker.restart_container_route', container_id=container.Id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-info w-100">Restart Container</button>
+                </form>
+            {% else %}
+                <form action="{{ url_for('docker.start_container_route', container_id=container.Id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success w-100">Start Container</button>
+                </form>
+            {% endif %}
+
+            <a href="{{ url_for('docker.exec_container', container_id=container.Id) }}" class="btn btn-secondary w-100">Execute Command</a>
+
+            <form action="{{ url_for('docker.remove_container_route', container_id=container.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to remove this container?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="force" value="false">
+                <button type="submit" class="btn btn-danger w-100">Remove Container</button>
+            </form>
+
+            <form action="{{ url_for('docker.remove_container_route', container_id=container.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to force remove this container?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="force" value="true">
+                <button type="submit" class="btn btn-outline-danger w-100">Force Remove Container</button>
+            </form>
+        </div>
+    </div>
+</div>

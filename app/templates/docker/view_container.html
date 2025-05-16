@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Container Details{% endblock %}
+
+{% block head %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js" integrity="sha384-ZhGVH+qRtx6Pf1yoz3jqzZZBZZXX3Y1N1J4FgCtiXIQNpB2PzGmOQOXYKiMF4EWV" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js" integrity="sha384-rKvJx2CpqQV7AAzx4EnEEKuLl0DQTg0SuHVYXJ1VPY0pPz4xYSBJnQGJVxvXJsL" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" integrity="sha384-e+HCZQzGR8o0TmdxoE7ZYKQVUCGBp/xOJXZDmZKiQYJE2H/Q8YYE6vJBuKsXP3G" crossorigin="anonymous" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/docker/container-view.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Container Details</h1>
+        <div>
+            <a href="{{ url_for('docker.list_containers') }}" class="btn btn-secondary">Back to Containers</a>
+            <a href="{{ url_for('docker.docker') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+    </div>
+
+    {% if container %}
+        <!-- Hidden inputs for JavaScript -->
+        <input type="hidden" id="container-id" value="{{ container.Id }}">
+        <input type="hidden" id="room-name" value="{{ room_name }}">
+        <input type="hidden" id="csrf-token" value="{{ csrf_token() }}">
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                {% include 'docker/components/container-info.html' %}
+            </div>
+
+            <div class="col-md-6">
+                {% include 'docker/components/container-actions.html' %}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                {% include 'docker/components/container-tabs.html' %}
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">
+            Container not found or error retrieving container details.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -9,12 +9,14 @@
         <p class="text-muted">Monitor and manage system operations</p>
     </div>
     <div class="col-auto">
-        <form action="{{ url_for('system.reset') }}" method="POST" onsubmit="return confirm('Are you sure you want to reset the system? This will restore factory defaults.');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger">
-                <i class="bi bi-arrow-repeat"></i> System Reset
-            </button>
-        </form>
+        <div class="btn-group" role="group">
+            <form action="{{ url_for('system.reset') }}" method="POST" onsubmit="return confirm('Are you sure you want to reset the system? This will restore factory defaults.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-arrow-repeat"></i> System Reset
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 

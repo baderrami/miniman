@@ -1,0 +1,21 @@
+{# Container Logs Tab Component #}
+<div class="tab-pane fade show active" id="logs" role="tabpanel" aria-labelledby="logs-tab">
+    <div class="d-flex justify-content-between mb-3">
+        <h5>Container Logs</h5>
+        <div>
+            <button id="toggle-streaming" class="btn btn-primary btn-sm">Start Streaming</button>
+            <button id="clear-logs" class="btn btn-outline-secondary btn-sm ms-2">Clear Logs</button>
+            <div class="form-check form-check-inline auto-scroll ms-2">
+                <input class="form-check-input" type="checkbox" id="auto-scroll" checked>
+                <label class="form-check-label" for="auto-scroll">Auto-scroll</label>
+            </div>
+        </div>
+    </div>
+    <div id="log-container" class="border rounded p-2">
+        <div id="initial-logs">
+            <div class="alert alert-info">
+                Click "Start Streaming" to view container logs.
+            </div>
+        </div>
+    </div>
+</div>

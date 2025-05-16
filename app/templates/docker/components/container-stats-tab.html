@@ -1,0 +1,62 @@
+{# Container Stats Tab Component #}
+<div class="tab-pane fade" id="stats" role="tabpanel" aria-labelledby="stats-tab">
+    <div class="d-flex justify-content-between mb-3">
+        <h5>Container Stats</h5>
+        <div>
+            <button id="toggle-stats" class="btn btn-primary btn-sm">Start Monitoring</button>
+            <select id="stats-interval" class="form-select form-select-sm d-inline-block ms-2" style="width: auto;">
+                <option value="1000">1 second</option>
+                <option value="2000" selected>2 seconds</option>
+                <option value="5000">5 seconds</option>
+                <option value="10000">10 seconds</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">CPU Usage</h6>
+                </div>
+                <div class="card-body">
+                    <div id="cpu-chart" class="stats-chart"></div>
+                    <p id="cpu-current">{{ stats.CPUPerc if stats else 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Memory Usage</h6>
+                </div>
+                <div class="card-body">
+                    <div id="memory-chart" class="stats-chart"></div>
+                    <p id="memory-current">{{ stats.MemUsage if stats else 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Network I/O</h6>
+                </div>
+                <div class="card-body">
+                    <div id="network-chart" class="stats-chart"></div>
+                    <p id="network-current">{{ stats.NetIO if stats else 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Block I/O</h6>
+                </div>
+                <div class="card-body">
+                    <div id="disk-chart" class="stats-chart"></div>
+                    <p id="disk-current">{{ stats.BlockIO if stats else 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

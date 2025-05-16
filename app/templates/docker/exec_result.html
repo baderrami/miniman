@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Command Execution Result{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Command Execution Result</h1>
+        <div>
+            <a href="{{ url_for('docker.exec_container', container_id=container_id) }}" class="btn btn-primary">Execute Another Command</a>
+            <a href="{{ url_for('docker.view_container', container_id=container_id) }}" class="btn btn-secondary">Back to Container</a>
+            <a href="{{ url_for('docker.list_containers') }}" class="btn btn-outline-secondary">All Containers</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Container: {{ container_id }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <h6>Command:</h6>
+                <div class="bg-light p-2 rounded">
+                    <code>{{ command }}</code>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <h6>Result:</h6>
+                {% if success %}
+                    <pre class="bg-dark text-light p-3" style="max-height: 500px; overflow-y: auto;">{{ output }}</pre>
+                {% else %}
+                    <div class="alert alert-danger">
+                        <h6>Error:</h6>
+                        <pre>{{ output }}</pre>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

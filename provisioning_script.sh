@@ -270,7 +270,7 @@ fi
 # Clone repository if provided and directory is empty
 if [ -n "$GIT_REPO" ] && [ -z "$(ls -A $APP_DIR)" ]; then
   print_message "Cloning application repository..."
-  GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch software-deployer "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch advanced-software-management "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
 elif [ -n "$GIT_REPO" ] && [ -d "$APP_DIR/.git" ]; then
   print_message "Updating existing repository..."
   cd "$APP_DIR"
@@ -285,7 +285,7 @@ elif [ -n "$GIT_REPO" ]; then
       print_message "Backing up existing directory..."
       mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
       mkdir -p "$APP_DIR"
-      GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch software-deployer "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+      GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch advanced-software-management "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
       ;;
     p|P)
       if [ -d "$APP_DIR/.git" ]; then
@@ -298,7 +298,7 @@ elif [ -n "$GIT_REPO" ]; then
         if [[ "$BACKUP_REPLACE" =~ ^[Yy]$ ]]; then
           mv "$APP_DIR" "${APP_DIR}-backup-$(date +%Y%m%d%H%M%S)"
           mkdir -p "$APP_DIR"
-          GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch software-deployer "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
+          GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch advanced-software-management "$GIT_REPO" "$APP_DIR" || print_warning "Failed to clone repository. Continuing without application code."
         fi
       fi
       ;;

@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app.controllers.auth import admin_required
 from app.utils.system_utils import get_system_info, perform_system_reset, get_disk_usage
+from app import db
 
 # Create blueprint
 system_bp = Blueprint('system', __name__)
