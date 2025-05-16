@@ -218,10 +218,108 @@ The Docker management module provides comprehensive container orchestration capa
    - Connect and disconnect containers from networks
    - Inspect network configuration and attached containers
 
+## WebSocket Architecture
+
+The Mini Manager implements a centralized WebSocket management system that provides real-time communication capabilities across all components of the application.
+
+### 1. Centralized WebSocket Manager
+
+The WebSocket functionality is centralized in a dedicated module that abstracts the underlying WebSocket implementation (Flask-SocketIO) and provides a clean API for components to use:
+
+```python
+# app/utils/websocket_manager.py
+from flask_socketio import emit, join_room, leave_room
+import threading
+
+# Reference to the Flask-SocketIO instance
+_socketio = None
+
+def init_socketio(socketio_instance):
+    """Initialize the WebSocket manager with a Flask-SocketIO instance."""
+    global _socketio
+    _socketio = socketio_instance
+    register_default_handlers()
+
+def emit_event(event_name, data, room=None):
+    """Emit a WebSocket event."""
+    if _socketio:
+        _socketio.emit(event_name, data, room=room)
+
+def run_in_background(func, *args, **kwargs):
+    """Run a function in a background thread."""
+    thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+    thread.daemon = True
+    thread.start()
+    return thread
+```
+
+Key features of the WebSocket manager:
+- Centralized event emission and handling
+- Standardized room naming conventions
+- Component-specific helper functions
+- Background thread management
+- Automatic registration of common event handlers
+
+### 2. Component Integration
+
+Components integrate with the WebSocket manager to provide real-time updates:
+
+#### Docker Component
+The Docker component uses the WebSocket manager for:
+- Real-time container log streaming
+- Operation status updates
+- Container status change notifications
+
+Example of Docker component integration:
+```python
+# Register a Docker-specific event handler
+@websocket_manager.register_event_handler('stream_container_logs')
+def handle_stream_container_logs(data):
+    container_id = data.get('container_id')
+    room = data.get('room')
+
+    # Send logs via the WebSocket manager
+    websocket_manager.emit_container_log(
+        container_id=container_id,
+        line='Starting log streaming...',
+        status='info',
+        room=room
+    )
+
+    # Run the streaming in a background thread
+    websocket_manager.run_in_background(stream_logs_thread, container_id, room)
+```
+
+### 3. WebSocket Logging System
+
+The WebSocket manager includes specialized logging capabilities:
+
+```python
+# Docker-specific logging
+def emit_docker_log(log_data, room=None):
+    """Emit a Docker log event."""
+    emit_log('docker', 'log', log_data, room)
+
+def emit_container_log(container_id, line, status='info', room=None):
+    """Emit a container log event."""
+    log_data = {
+        'container_id': container_id,
+        'line': line,
+        'status': status
+    }
+    emit_docker_log(log_data, room or create_room_name('docker', 'container', container_id))
+```
+
+This allows for:
+- Component-specific log formats
+- Standardized log event structure
+- Automatic room management
+- Consistent timestamp handling
+
 ## Suggested Improvements for Active Logging
 
 ### 1. Comprehensive Logging System
-Implement a centralized logging system that captures operations across all modules:
+Extend the centralized WebSocket logging system to capture operations across all modules:
 
 - **System-wide Operation Log Model**:
   ```python
@@ -252,7 +350,7 @@ Implement a centralized logging system that captures operations across all modul
               )
               db.session.add(log)
               db.session.commit()
-              
+
               try:
                   result = func(*args, **kwargs)
                   log.status = "completed"
@@ -270,11 +368,11 @@ Implement a centralized logging system that captures operations across all modul
       return decorator
   ```
 
-### 2. Real-time Log Streaming
-Implement WebSocket-based real-time log streaming for active operations:
+### 2. Enhanced Real-time Log Streaming
+Extend the WebSocket-based real-time log streaming for all operations:
 
-- Add a WebSocket server using Flask-SocketIO
-- Stream log updates to the client in real-time
+- Integrate all components with the centralized WebSocket manager
+- Implement component-specific log formatters and handlers
 - Allow filtering and searching of logs in the UI
 - Implement log retention policies to manage storage
 

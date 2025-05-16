@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required
-from flask_socketio import emit, join_room, leave_room
-from app import db, socketio
+from app import db
 from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork, \
     DockerOperationLog
+from app.utils import websocket_manager
 from app.utils.docker import (
     ensure_docker_installed, install_docker, download_compose_file,
     check_for_updates, update_compose_file, run_compose, stop_compose,
@@ -23,42 +23,8 @@ from datetime import datetime
 # Create blueprint
 docker_bp = Blueprint('docker', __name__)
 
-# WebSocket event handlers
-@socketio.on('connect')
-def handle_connect():
-    """Handle WebSocket connection."""
-    print('Client connected')
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    """Handle WebSocket disconnection."""
-    print('Client disconnected')
-
-@socketio.on('join')
-def handle_join(data):
-    """
-    Handle joining a room for specific Docker operations.
-
-    Args:
-        data (dict): Data containing room information
-    """
-    room = data.get('room', 'docker_logs')
-    join_room(room)
-    emit('status', {'msg': f'Joined room: {room}'}, room=room)
-
-@socketio.on('leave')
-def handle_leave(data):
-    """
-    Handle leaving a room.
-
-    Args:
-        data (dict): Data containing room information
-    """
-    room = data.get('room', 'docker_logs')
-    leave_room(room)
-    emit('status', {'msg': f'Left room: {room}'}, room=room)
-
-@socketio.on('stream_container_logs')
+# Register Docker-specific WebSocket event handlers
+@websocket_manager.register_event_handler('stream_container_logs')
 def handle_stream_container_logs(data):
     """
     Handle streaming container logs.
@@ -72,27 +38,22 @@ def handle_stream_container_logs(data):
     print(f"Received request to stream logs for container {container_id} in room {room}")
 
     if not container_id or not room:
-        emit('status', {'msg': 'Missing container_id or room'}, room=room)
+        websocket_manager.emit_event('status', {'msg': 'Missing container_id or room'}, room)
         return
 
-    # Join the room for this container's logs
-    join_room(room)
-    emit('status', {'msg': f'Joined room for container logs: {container_id}'}, room=room)
-
     # Send a message to indicate streaming is starting
-    emit('docker_log', {
-        'container_id': container_id,
-        'line': f'Starting log streaming for container {container_id}...',
-        'timestamp': datetime.utcnow().isoformat(),
-        'status': 'info'
-    }, room=room)
+    websocket_manager.emit_container_log(
+        container_id=container_id,
+        line=f'Starting log streaming for container {container_id}...',
+        status='info',
+        room=room
+    )
 
     # Create a WebSocket logger for this container
     logger = create_logger(
         operation_type='stream_container_logs',
         container_id=container_id,
         use_websocket=True,
-        socket_io=socketio,
         room=room,
         use_db=False  # Don't create a DB log for streaming logs
     )
@@ -103,51 +64,49 @@ def handle_stream_container_logs(data):
     # Create a container manager and stream logs
     container_manager = ContainerManager()
 
-    # Run in a background thread to avoid blocking
+    # Define the streaming function
     def stream_logs_thread():
         try:
             print(f"Starting log streaming thread for container {container_id}")
             # Send an initial message to confirm the thread has started
-            emit('docker_log', {
-                'container_id': container_id,
-                'line': 'Log streaming thread started',
-                'timestamp': datetime.utcnow().isoformat(),
-                'status': 'info'
-            }, room=room)
+            websocket_manager.emit_container_log(
+                container_id=container_id,
+                line='Log streaming thread started',
+                status='info',
+                room=room
+            )
 
             # Stream the logs
             container_manager.stream_container_logs(container_id, logger)
 
             # If we get here, the streaming has completed normally
             print(f"Log streaming completed for container {container_id}")
-            emit('docker_log_complete', {
+            websocket_manager.emit_event('docker_log_complete', {
                 'container_id': container_id,
                 'success': True,
                 'timestamp': datetime.utcnow().isoformat(),
                 'status': 'completed'
-            }, room=room)
+            }, room)
 
         except Exception as e:
             print(f"Error streaming logs for container {container_id}: {str(e)}")
-            emit('docker_log', {
-                'container_id': container_id,
-                'line': f'Error streaming logs: {str(e)}',
-                'timestamp': datetime.utcnow().isoformat(),
-                'status': 'error'
-            }, room=room)
+            websocket_manager.emit_container_log(
+                container_id=container_id,
+                line=f'Error streaming logs: {str(e)}',
+                status='error',
+                room=room
+            )
 
-            emit('docker_log_complete', {
+            websocket_manager.emit_event('docker_log_complete', {
                 'container_id': container_id,
                 'success': False,
                 'error': str(e),
                 'timestamp': datetime.utcnow().isoformat(),
                 'status': 'error'
-            }, room=room)
+            }, room)
 
-    import threading
-    thread = threading.Thread(target=stream_logs_thread)
-    thread.daemon = True
-    thread.start()
+    # Run in a background thread to avoid blocking
+    websocket_manager.run_in_background(stream_logs_thread)
     print(f"Started log streaming thread for container {container_id}")
 
 @docker_bp.route('/docker')
@@ -346,7 +305,6 @@ def run_config(id):
         operation_type='run_compose',
         config_id=config.id,
         use_websocket=True,
-        socket_io=socketio,
         room=f'docker_config_{config.id}',
         use_db=False  # We already created the DB log
     )
@@ -404,7 +362,6 @@ def stop_config(id):
         operation_type='stop_compose',
         config_id=config.id,
         use_websocket=True,
-        socket_io=socketio,
         room=f'docker_config_{config.id}',
         use_db=False  # We already created the DB log
     )
@@ -463,7 +420,6 @@ def restart_config(id):
         operation_type='restart_compose',
         config_id=config.id,
         use_websocket=True,
-        socket_io=socketio,
         room=f'docker_config_{config.id}',
         use_db=False  # We already created the DB log
     )
@@ -554,7 +510,6 @@ def pull_config(id):
         operation_type='pull_images',
         config_id=config.id,
         use_websocket=True,
-        socket_io=socketio,
         room=f'docker_config_{config.id}',
         use_db=False  # We already created the DB log
     )
@@ -685,24 +640,23 @@ def start_container_route(container_id):
             db.session.commit()
 
         # Emit WebSocket event for container status change
-        socketio.emit('container_status_change', {
-            'container_id': container_id,
-            'status': 'running',
-            'action': 'start',
-            'timestamp': datetime.utcnow().isoformat(),
-            'success': True
-        }, room=f'container_logs_{container_id}')
+        websocket_manager.emit_container_status_change(
+            container_id=container_id,
+            status='running',
+            action='start',
+            success=True
+        )
 
         flash('Container started successfully.', 'success')
     else:
         # Emit WebSocket event for failed action
-        socketio.emit('container_status_change', {
-            'container_id': container_id,
-            'action': 'start',
-            'timestamp': datetime.utcnow().isoformat(),
-            'success': False,
-            'error': output
-        }, room=f'container_logs_{container_id}')
+        websocket_manager.emit_container_status_change(
+            container_id=container_id,
+            status='error',
+            action='start',
+            success=False,
+            error=output
+        )
 
         flash(f'Error starting container: {output}', 'danger')
 
@@ -733,24 +687,23 @@ def stop_container_route(container_id):
             db.session.commit()
 
         # Emit WebSocket event for container status change
-        socketio.emit('container_status_change', {
-            'container_id': container_id,
-            'status': 'stopped',
-            'action': 'stop',
-            'timestamp': datetime.utcnow().isoformat(),
-            'success': True
-        }, room=f'container_logs_{container_id}')
+        websocket_manager.emit_container_status_change(
+            container_id=container_id,
+            status='stopped',
+            action='stop',
+            success=True
+        )
 
         flash('Container stopped successfully.', 'success')
     else:
         # Emit WebSocket event for failed action
-        socketio.emit('container_status_change', {
-            'container_id': container_id,
-            'action': 'stop',
-            'timestamp': datetime.utcnow().isoformat(),
-            'success': False,
-            'error': output
-        }, room=f'container_logs_{container_id}')
+        websocket_manager.emit_container_status_change(
+            container_id=container_id,
+            status='error',
+            action='stop',
+            success=False,
+            error=output
+        )
 
         flash(f'Error stopping container: {output}', 'danger')
 
@@ -781,24 +734,23 @@ def restart_container_route(container_id):
             db.session.commit()
 
         # Emit WebSocket event for container status change
-        socketio.emit('container_status_change', {
-            'container_id': container_id,
-            'status': 'running',
-            'action': 'restart',
-            'timestamp': datetime.utcnow().isoformat(),
-            'success': True
-        }, room=f'container_logs_{container_id}')
+        websocket_manager.emit_container_status_change(
+            container_id=container_id,
+            status='running',
+            action='restart',
+            success=True
+        )
 
         flash('Container restarted successfully.', 'success')
     else:
         # Emit WebSocket event for failed action
-        socketio.emit('container_status_change', {
-            'container_id': container_id,
-            'action': 'restart',
-            'timestamp': datetime.utcnow().isoformat(),
-            'success': False,
-            'error': output
-        }, room=f'container_logs_{container_id}')
+        websocket_manager.emit_container_status_change(
+            container_id=container_id,
+            status='error',
+            action='restart',
+            success=False,
+            error=output
+        )
 
         flash(f'Error restarting container: {output}', 'danger')
 
@@ -949,7 +901,6 @@ def pull_image_route():
             operation_type='pull_image',
             image_name=image_name,
             use_websocket=True,
-            socket_io=socketio,
             room=f'docker_image_{image_name.replace(":", "_")}',
             use_db=False  # We already created the DB log
         )
@@ -1020,7 +971,6 @@ def build_image_route():
             operation_type='build_image',
             image_name=tag,
             use_websocket=True,
-            socket_io=socketio,
             room=f'docker_image_{tag.replace(":", "_")}',
             use_db=False  # We already created the DB log
         )

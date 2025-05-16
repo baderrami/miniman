@@ -34,6 +34,10 @@ def create_app(config_name='default'):
     csrf.init_app(app)
     socketio.init_app(app, cors_allowed_origins="*", ping_timeout=60, ping_interval=25)
 
+    # Initialize WebSocket manager
+    from app.utils import websocket_manager
+    websocket_manager.init_socketio(socketio)
+
     # Register blueprints
     from app.controllers.auth import auth_bp
     from app.controllers.network import network_bp

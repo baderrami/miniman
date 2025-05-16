@@ -7,6 +7,7 @@ This module provides classes for logging Docker operations, including WebSocket 
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Callable
 from app.models.docker import DockerOperationLog
+from app.utils import websocket_manager
 
 
 class DockerLogger:
@@ -93,14 +94,14 @@ class WebSocketLogger(DockerLogger):
             config_id (Optional[int]): ID of the Docker Compose configuration
             container_id (Optional[str]): ID of the container
             image_name (Optional[str]): Name of the image
-            socket_io: Flask-SocketIO instance
+            socket_io: Flask-SocketIO instance (deprecated, kept for backward compatibility)
             room (Optional[str]): Room to emit events to
         """
         super().__init__(operation_type, config_id, container_id, image_name)
-        self.socket_io = socket_io
+        # socket_io parameter is kept for backward compatibility but not used
         self.room = room or 'docker_logs'
         self.log_id = None
-        
+
         if self.db_log:
             self.log_id = self.db_log.id
 
@@ -112,18 +113,18 @@ class WebSocketLogger(DockerLogger):
             line (str): Log line to add
         """
         super().add_log_line(line)
-        
-        if self.socket_io:
-            self.socket_io.emit('docker_log', {
-                'log_id': self.log_id,
-                'operation_type': self.operation_type,
-                'config_id': self.config_id,
-                'container_id': self.container_id,
-                'image_name': self.image_name,
-                'line': line,
-                'timestamp': datetime.utcnow().isoformat(),
-                'status': self.status
-            }, room=self.room)
+
+        # Use the centralized WebSocket manager to emit the event
+        log_data = {
+            'log_id': self.log_id,
+            'operation_type': self.operation_type,
+            'config_id': self.config_id,
+            'container_id': self.container_id,
+            'image_name': self.image_name,
+            'line': line,
+            'status': self.status
+        }
+        websocket_manager.emit_docker_log(log_data, self.room)
 
     def complete(self, success: bool = True) -> None:
         """
@@ -133,18 +134,16 @@ class WebSocketLogger(DockerLogger):
             success (bool): Whether the operation was successful
         """
         super().complete(success)
-        
-        if self.socket_io:
-            self.socket_io.emit('docker_log_complete', {
-                'log_id': self.log_id,
-                'operation_type': self.operation_type,
-                'config_id': self.config_id,
-                'container_id': self.container_id,
-                'image_name': self.image_name,
-                'success': success,
-                'timestamp': datetime.utcnow().isoformat(),
-                'status': self.status
-            }, room=self.room)
+
+        # Use the centralized WebSocket manager to emit the completion event
+        data = {
+            'log_id': self.log_id,
+            'operation_type': self.operation_type,
+            'config_id': self.config_id,
+            'container_id': self.container_id,
+            'image_name': self.image_name
+        }
+        websocket_manager.emit_docker_operation_complete(self.operation_type, success, data, self.room)
 
 
 # Factory function to create the appropriate logger
@@ -161,20 +160,21 @@ def create_logger(operation_type: str, config_id: Optional[int] = None,
         container_id (Optional[str]): ID of the container
         image_name (Optional[str]): Name of the image
         use_websocket (bool): Whether to use WebSocket logging
-        socket_io: Flask-SocketIO instance
+        socket_io: Flask-SocketIO instance (deprecated, kept for backward compatibility)
         room (Optional[str]): Room to emit events to
         use_db (bool): Whether to create a database log entry
 
     Returns:
         DockerLogger: Docker logger instance
     """
-    if use_websocket and socket_io:
+    if use_websocket:
+        # Create a WebSocketLogger that uses the centralized WebSocket manager
         logger = WebSocketLogger(
             operation_type=operation_type,
             config_id=config_id,
             container_id=container_id,
             image_name=image_name,
-            socket_io=socket_io,
+            socket_io=None,  # Not used anymore, but kept for backward compatibility
             room=room
         )
     else:
@@ -184,8 +184,8 @@ def create_logger(operation_type: str, config_id: Optional[int] = None,
             container_id=container_id,
             image_name=image_name
         )
-    
+
     if use_db:
         logger.create_db_log()
-    
+
     return logger
