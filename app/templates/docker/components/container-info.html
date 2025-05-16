@@ -1,0 +1,75 @@
+{# Container Information Component #}
+<div class="card h-100">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Container Information</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-4">ID</dt>
+            <dd class="col-sm-8">{{ container.Id[:12] }}</dd>
+
+            <dt class="col-sm-4">Name</dt>
+            <dd class="col-sm-8">{{ container.Name }}</dd>
+
+            <dt class="col-sm-4">Image</dt>
+            <dd class="col-sm-8">{{ container.Config.Image }}</dd>
+
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8">
+                {% if container.State.Running %}
+                    <span id="container-status-running" class="badge bg-success" data-running="true">Running</span>
+                {% else %}
+                    <span id="container-status-stopped" class="badge bg-danger" data-running="false">Stopped</span>
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-4">Created</dt>
+            <dd class="col-sm-8">{{ container.Created }}</dd>
+
+            <dt class="col-sm-4">Ports</dt>
+            <dd class="col-sm-8">
+                {% if container.NetworkSettings.Ports %}
+                    <ul class="list-unstyled">
+                        {% for port, bindings in container.NetworkSettings.Ports.items() %}
+                            {% if bindings %}
+                                {% for binding in bindings %}
+                                    <li>{{ binding.HostIp }}:{{ binding.HostPort }} -> {{ port }}</li>
+                                {% endfor %}
+                            {% else %}
+                                <li>{{ port }} (not published)</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    No ports exposed
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-4">Networks</dt>
+            <dd class="col-sm-8">
+                {% if container.NetworkSettings.Networks %}
+                    <ul class="list-unstyled">
+                        {% for network_name, network in container.NetworkSettings.Networks.items() %}
+                            <li>{{ network_name }} ({{ network.IPAddress }})</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    No networks
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-4">Volumes</dt>
+            <dd class="col-sm-8">
+                {% if container.Mounts %}
+                    <ul class="list-unstyled">
+                        {% for mount in container.Mounts %}
+                            <li>{{ mount.Source }} -> {{ mount.Destination }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    No volumes
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>

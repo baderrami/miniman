@@ -4,28 +4,11 @@
 
 {% block head %}
 {{ super() }}
-<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
-<style>
-    #log-container {
-        max-height: 400px;
-        overflow-y: auto;
-        font-family: monospace;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-    .log-line {
-        margin: 0;
-        padding: 1px 0;
-    }
-    .log-timestamp {
-        color: #aaa;
-        font-size: 0.85em;
-        margin-right: 10px;
-    }
-    .auto-scroll {
-        margin-top: 10px;
-    }
-</style>
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js" integrity="sha384-ZhGVH+qRtx6Pf1yoz3jqzZZBZZXX3Y1N1J4FgCtiXIQNpB2PzGmOQOXYKiMF4EWV" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js" integrity="sha384-rKvJx2CpqQV7AAzx4EnEEKuLl0DQTg0SuHVYXJ1VPY0pPz4xYSBJnQGJVxvXJsL" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" integrity="sha384-e+HCZQzGR8o0TmdxoE7ZYKQVUCGBp/xOJXZDmZKiQYJE2H/Q8YYE6vJBuKsXP3G" crossorigin="anonymous" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/docker/container-view.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -39,182 +22,24 @@
     </div>
 
     {% if container %}
+        <!-- Hidden inputs for JavaScript -->
+        <input type="hidden" id="container-id" value="{{ container.Id }}">
+        <input type="hidden" id="room-name" value="{{ room_name }}">
+        
         <div class="row mb-4">
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Container Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <dl class="row">
-                            <dt class="col-sm-4">ID</dt>
-                            <dd class="col-sm-8">{{ container.Id[:12] }}</dd>
-
-                            <dt class="col-sm-4">Name</dt>
-                            <dd class="col-sm-8">{{ container.Name }}</dd>
-
-                            <dt class="col-sm-4">Image</dt>
-                            <dd class="col-sm-8">{{ container.Config.Image }}</dd>
-
-                            <dt class="col-sm-4">Status</dt>
-                            <dd class="col-sm-8">
-                                {% if container.State.Running %}
-                                    <span id="container-status" class="badge bg-success" data-running="true">Running</span>
-                                {% else %}
-                                    <span id="container-status" class="badge bg-danger" data-running="false">Stopped</span>
-                                {% endif %}
-                            </dd>
-
-                            <dt class="col-sm-4">Created</dt>
-                            <dd class="col-sm-8">{{ container.Created }}</dd>
-
-                            <dt class="col-sm-4">Ports</dt>
-                            <dd class="col-sm-8">
-                                {% if container.NetworkSettings.Ports %}
-                                    <ul class="list-unstyled">
-                                        {% for port, bindings in container.NetworkSettings.Ports.items() %}
-                                            {% if bindings %}
-                                                {% for binding in bindings %}
-                                                    <li>{{ binding.HostIp }}:{{ binding.HostPort }} -> {{ port }}</li>
-                                                {% endfor %}
-                                            {% else %}
-                                                <li>{{ port }} (not published)</li>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    No ports exposed
-                                {% endif %}
-                            </dd>
-
-                            <dt class="col-sm-4">Networks</dt>
-                            <dd class="col-sm-8">
-                                {% if container.NetworkSettings.Networks %}
-                                    <ul class="list-unstyled">
-                                        {% for network_name, network in container.NetworkSettings.Networks.items() %}
-                                            <li>{{ network_name }} ({{ network.IPAddress }})</li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    No networks
-                                {% endif %}
-                            </dd>
-
-                            <dt class="col-sm-4">Volumes</dt>
-                            <dd class="col-sm-8">
-                                {% if container.Mounts %}
-                                    <ul class="list-unstyled">
-                                        {% for mount in container.Mounts %}
-                                            <li>{{ mount.Source }} -> {{ mount.Destination }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    No volumes
-                                {% endif %}
-                            </dd>
-                        </dl>
-                    </div>
-                </div>
+                {% include 'docker/components/container-info.html' %}
             </div>
 
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            {% if container.State.Running %}
-                                <form action="{{ url_for('docker.stop_container_route', container_id=container.Id) }}" method="post">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-warning w-100">Stop Container</button>
-                                </form>
-
-                                <form action="{{ url_for('docker.restart_container_route', container_id=container.Id) }}" method="post">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-info w-100">Restart Container</button>
-                                </form>
-                            {% else %}
-                                <form action="{{ url_for('docker.start_container_route', container_id=container.Id) }}" method="post">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-success w-100">Start Container</button>
-                                </form>
-                            {% endif %}
-
-                            <a href="{{ url_for('docker.exec_container', container_id=container.Id) }}" class="btn btn-secondary w-100">Execute Command</a>
-
-                            <form action="{{ url_for('docker.remove_container_route', container_id=container.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to remove this container?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="force" value="false">
-                                <button type="submit" class="btn btn-danger w-100">Remove Container</button>
-                            </form>
-
-                            <form action="{{ url_for('docker.remove_container_route', container_id=container.Id) }}" method="post" onsubmit="return confirm('Are you sure you want to force remove this container?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="force" value="true">
-                                <button type="submit" class="btn btn-outline-danger w-100">Force Remove Container</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                {% include 'docker/components/container-actions.html' %}
             </div>
         </div>
 
         <div class="row">
-
-            {% if stats %}
             <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Container Stats</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">CPU Usage</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p>{{ stats.CPUPerc }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">Memory Usage</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p>{{ stats.MemUsage }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">Network I/O</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p>{{ stats.NetIO }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">Block I/O</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p>{{ stats.BlockIO }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {% include 'docker/components/container-tabs.html' %}
             </div>
-            {% endif %}
         </div>
     {% else %}
         <div class="alert alert-danger">
@@ -222,275 +47,14 @@
         </div>
     {% endif %}
 </div>
+{% endblock %}
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Socket.IO with reconnection options
-        const socket = io({
-            reconnection: true,
-            reconnectionAttempts: 10,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            timeout: 20000
-        });
-
-        const logContainer = document.getElementById('log-container');
-        const initialLogs = document.getElementById('initial-logs');
-        const toggleStreamingBtn = document.getElementById('toggle-streaming');
-        const clearLogsBtn = document.getElementById('clear-logs');
-        const autoScrollCheckbox = document.getElementById('auto-scroll');
-        const containerStatus = document.getElementById('container-status');
-
-        const containerId = '{{ container.Id }}';
-        const roomName = '{{ room_name }}';
-        let containerRunning = containerStatus.getAttribute('data-running') === 'true';
-
-        let isStreaming = false;
-        let hasJoinedRoom = false;
-
-        // Format timestamp
-        function formatTimestamp(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString();
-        }
-
-        // Scroll to bottom of log container
-        function scrollToBottom() {
-            if (autoScrollCheckbox.checked) {
-                logContainer.scrollTop = logContainer.scrollHeight;
-            }
-        }
-
-        // Add a log line to the container
-        function addLogLine(timestamp, text) {
-            // Don't add empty lines
-            if (!text || text.trim() === '') {
-                return;
-            }
-
-            const lineElement = document.createElement('div');
-            lineElement.className = 'log-line';
-
-            if (timestamp) {
-                const timestampSpan = document.createElement('span');
-                timestampSpan.className = 'log-timestamp';
-                timestampSpan.textContent = formatTimestamp(timestamp);
-                lineElement.appendChild(timestampSpan);
-            }
-
-            // Process the text to ensure it's properly formatted
-            // This helps with log lines that might contain special characters or HTML
-            const textNode = document.createTextNode(text);
-            lineElement.appendChild(textNode);
-
-            logContainer.appendChild(lineElement);
-            scrollToBottom();
-        }
-
-        // Clear all logs
-        clearLogsBtn.addEventListener('click', function() {
-            // Clear the log container but keep the structure
-            const alertInfo = document.createElement('div');
-            alertInfo.className = 'alert alert-info';
-            alertInfo.textContent = 'Logs cleared. Start streaming to see new logs.';
-
-            logContainer.innerHTML = '';
-            logContainer.appendChild(alertInfo);
-
-            console.log('Logs cleared');
-        });
-
-        // Function to start streaming logs
-        function startStreaming() {
-            if (!hasJoinedRoom) {
-                console.log('Not joined to room yet, joining now');
-                socket.emit('join', { room: roomName });
-                hasJoinedRoom = true;
-            }
-
-            // Keep initial logs but clear any previous streaming logs
-            if (initialLogs) {
-                // We don't remove initialLogs completely to maintain the structure
-                // Get all log lines
-                const allLogLines = logContainer.querySelectorAll('.log-line');
-                // Remove only those that are not part of initialLogs
-                allLogLines.forEach(el => {
-                    if (!initialLogs.contains(el)) {
-                        el.remove();
-                    }
-                });
-            }
-
-            // Add a log line indicating streaming is starting
-            addLogLine(new Date().toISOString(), '--- Starting log streaming ---');
-
-            socket.emit('stream_container_logs', {
-                container_id: containerId,
-                room: roomName
-            });
-
-            isStreaming = true;
-            toggleStreamingBtn.textContent = 'Stop Streaming';
-            toggleStreamingBtn.classList.remove('btn-primary');
-            toggleStreamingBtn.classList.add('btn-danger');
-            console.log('Started streaming logs');
-        }
-
-        // Function to stop streaming logs
-        function stopStreaming() {
-            socket.emit('leave', { room: roomName });
-            isStreaming = false;
-            toggleStreamingBtn.textContent = 'Start Streaming';
-            toggleStreamingBtn.classList.remove('btn-danger');
-            toggleStreamingBtn.classList.add('btn-primary');
-            console.log('Stopped streaming logs');
-
-            // Add a log line indicating streaming has stopped
-            addLogLine(new Date().toISOString(), '--- Log streaming stopped ---');
-        }
-
-        // Toggle streaming
-        toggleStreamingBtn.addEventListener('click', function() {
-            if (isStreaming) {
-                stopStreaming();
-            } else {
-                startStreaming();
-            }
-        });
-
-        // Socket event handlers
-        socket.on('connect', function() {
-            console.log('Connected to WebSocket server');
-
-            // Join the room for this container's logs when connection is established
-            // This ensures we're in the right room to receive logs
-            socket.emit('join', { room: roomName });
-            console.log('Joined room:', roomName);
-            hasJoinedRoom = true;
-
-            // If we were streaming before disconnection, restart streaming
-            if (isStreaming) {
-                console.log('Reconnected, restarting streaming');
-                startStreaming();
-            }
-        });
-
-        socket.on('reconnect_attempt', function(attemptNumber) {
-            console.log('Attempting to reconnect:', attemptNumber);
-            addLogLine(new Date().toISOString(), `Attempting to reconnect to WebSocket server (attempt ${attemptNumber})...`);
-        });
-
-        socket.on('reconnect', function(attemptNumber) {
-            console.log('Reconnected after', attemptNumber, 'attempts');
-            addLogLine(new Date().toISOString(), `Reconnected to WebSocket server after ${attemptNumber} attempts`);
-
-            // Re-join the room after reconnection
-            socket.emit('join', { room: roomName });
-            hasJoinedRoom = true;
-
-            // If we were streaming before disconnection, restart streaming
-            if (isStreaming) {
-                console.log('Reconnected, restarting streaming');
-                startStreaming();
-            }
-        });
-
-        socket.on('reconnect_error', function(error) {
-            console.error('Reconnection error:', error);
-            addLogLine(new Date().toISOString(), `Error reconnecting to WebSocket server: ${error}`);
-        });
-
-        socket.on('error', function(error) {
-            console.error('Socket.IO error:', error);
-            addLogLine(new Date().toISOString(), `WebSocket error: ${error}`);
-        });
-
-        socket.on('status', function(data) {
-            console.log('Status:', data.msg);
-        });
-
-        socket.on('docker_log', function(data) {
-            if (data.container_id === containerId) {
-                // Remove any alert messages when we start getting logs
-                const alerts = logContainer.querySelectorAll('.alert');
-                alerts.forEach(alert => alert.remove());
-
-                // Add the log line with timestamp
-                addLogLine(data.timestamp, data.line);
-                console.log('Received log:', data.line);
-            }
-        });
-
-        socket.on('docker_log_complete', function(data) {
-            if (data.container_id === containerId) {
-                addLogLine(data.timestamp, `--- Log streaming ${data.success ? 'completed' : 'failed'} ---`);
-                isStreaming = false;
-                toggleStreamingBtn.textContent = 'Start Streaming';
-                toggleStreamingBtn.classList.remove('btn-danger');
-                toggleStreamingBtn.classList.add('btn-primary');
-            }
-        });
-
-        // Listen for container status changes
-        socket.on('container_status_change', function(data) {
-            if (data.container_id === containerId) {
-                console.log('Container status change:', data);
-
-                // Update the container status badge
-                if (data.status) {
-                    containerStatus.textContent = data.status === 'running' ? 'Running' : 'Stopped';
-                    containerStatus.className = 'badge ' + (data.status === 'running' ? 'bg-success' : 'bg-danger');
-                    containerStatus.setAttribute('data-running', data.status === 'running' ? 'true' : 'false');
-
-                    // Update the containerRunning variable to reflect current state
-                    containerRunning = data.status === 'running';
-                }
-
-                // Add a log entry about the action with a clear separator
-                const actionMessage = data.success 
-                    ? `------ Container ${data.action} action successful ------` 
-                    : `------ Container ${data.action} action failed: ${data.error || 'Unknown error'} ------`;
-                addLogLine(data.timestamp, actionMessage);
-
-                // If container was started or restarted and we're not streaming, start streaming
-                if ((data.action === 'start' || data.action === 'restart') && data.success && !isStreaming) {
-                    // Delay slightly to allow the container to start up
-                    setTimeout(function() {
-                        console.log('Auto-starting streaming after container start/restart');
-                        startStreaming();
-                    }, 1500);
-                }
-
-                // If container was stopped and we're streaming, stop streaming
-                if (data.action === 'stop' && data.success && isStreaming) {
-                    console.log('Auto-stopping streaming after container stop');
-                    stopStreaming();
-                }
-            }
-        });
-
-        // Auto-start streaming if container is running
-        if (containerRunning) {
-            // Delay slightly to ensure the page is fully loaded and WebSocket is connected
-            setTimeout(function() {
-                console.log('Auto-starting streaming for running container');
-                // Only start if not already streaming
-                if (!isStreaming) {
-                    startStreaming();
-                }
-            }, 1500); // Increased delay to ensure WebSocket connection is established
-        } else {
-            console.log('Container not running, not auto-starting streaming');
-        }
-
-        // Set up a periodic check to restart streaming if it stopped unexpectedly
-        // This ensures logs continue to update even if the WebSocket connection was interrupted
-        setInterval(function() {
-            if (containerRunning && !isStreaming && hasJoinedRoom) {
-                console.log('Detected container running but not streaming, restarting stream');
-                startStreaming();
-            }
-        }, 10000); // Check every 10 seconds
-    });
-</script>
+{% block scripts %}
+{{ super() }}
+<!-- Load container-specific JavaScript files -->
+<script src="{{ url_for('static', filename='js/docker/container-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/docker/container-logs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/docker/container-terminal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/docker/container-files.js') }}"></script>
+<script src="{{ url_for('static', filename='js/docker/container-stats.js') }}"></script>
 {% endblock %}
