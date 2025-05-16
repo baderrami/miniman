@@ -58,6 +58,98 @@ def handle_leave(data):
     leave_room(room)
     emit('status', {'msg': f'Left room: {room}'}, room=room)
 
+@socketio.on('stream_container_logs')
+def handle_stream_container_logs(data):
+    """
+    Handle streaming container logs.
+
+    Args:
+        data (dict): Data containing container ID and room information
+    """
+    container_id = data.get('container_id')
+    room = data.get('room')
+
+    print(f"Received request to stream logs for container {container_id} in room {room}")
+
+    if not container_id or not room:
+        emit('status', {'msg': 'Missing container_id or room'}, room=room)
+        return
+
+    # Join the room for this container's logs
+    join_room(room)
+    emit('status', {'msg': f'Joined room for container logs: {container_id}'}, room=room)
+
+    # Send a message to indicate streaming is starting
+    emit('docker_log', {
+        'container_id': container_id,
+        'line': f'Starting log streaming for container {container_id}...',
+        'timestamp': datetime.utcnow().isoformat(),
+        'status': 'info'
+    }, room=room)
+
+    # Create a WebSocket logger for this container
+    logger = create_logger(
+        operation_type='stream_container_logs',
+        container_id=container_id,
+        use_websocket=True,
+        socket_io=socketio,
+        room=room,
+        use_db=False  # Don't create a DB log for streaming logs
+    )
+
+    # Import the container manager
+    from app.utils.docker.container import ContainerManager
+
+    # Create a container manager and stream logs
+    container_manager = ContainerManager()
+
+    # Run in a background thread to avoid blocking
+    def stream_logs_thread():
+        try:
+            print(f"Starting log streaming thread for container {container_id}")
+            # Send an initial message to confirm the thread has started
+            emit('docker_log', {
+                'container_id': container_id,
+                'line': 'Log streaming thread started',
+                'timestamp': datetime.utcnow().isoformat(),
+                'status': 'info'
+            }, room=room)
+
+            # Stream the logs
+            container_manager.stream_container_logs(container_id, logger)
+
+            # If we get here, the streaming has completed normally
+            print(f"Log streaming completed for container {container_id}")
+            emit('docker_log_complete', {
+                'container_id': container_id,
+                'success': True,
+                'timestamp': datetime.utcnow().isoformat(),
+                'status': 'completed'
+            }, room=room)
+
+        except Exception as e:
+            print(f"Error streaming logs for container {container_id}: {str(e)}")
+            emit('docker_log', {
+                'container_id': container_id,
+                'line': f'Error streaming logs: {str(e)}',
+                'timestamp': datetime.utcnow().isoformat(),
+                'status': 'error'
+            }, room=room)
+
+            emit('docker_log_complete', {
+                'container_id': container_id,
+                'success': False,
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat(),
+                'status': 'error'
+            }, room=room)
+
+    import threading
+    thread = threading.Thread(target=stream_logs_thread)
+    thread.daemon = True
+    thread.start()
+    print(f"Started log streaming thread for container {container_id}")
+
 @docker_bp.route('/docker')
 @login_required
 def docker():
@@ -411,9 +503,18 @@ def container_logs(id, container_id):
     config = DockerComposeConfig.query.get_or_404(id)
     container = DockerContainer.query.filter_by(container_id=container_id).first_or_404()
 
+    # Get initial logs
     success, logs = get_container_logs(container_id)
 
-    return render_template('docker/logs.html', config=config, container=container, logs=logs, success=success)
+    # Create a room name for this container's logs
+    room_name = f'container_logs_{container_id}'
+
+    return render_template('docker/logs.html', 
+                          config=config, 
+                          container=container, 
+                          logs=logs, 
+                          success=success,
+                          room_name=room_name)
 
 @docker_bp.route('/docker/operation-log/<int:id>')
 @login_required
@@ -552,17 +653,21 @@ def view_container(container_id):
         flash('Error retrieving container details.', 'danger')
         return redirect(url_for('docker.list_containers'))
 
-    # Get container logs
+    # Get initial logs
     success, logs = get_container_logs(container_id)
 
     # Get container stats
     stats_success, stats = get_container_stats(container_id)
 
+    # Create a room name for this container's logs
+    room_name = f'container_logs_{container_id}'
+
     return render_template(
         'docker/view_container.html', 
         container=container_details, 
         logs=logs, 
-        stats=stats if stats_success else None
+        stats=stats if stats_success else None,
+        room_name=room_name
     )
 
 @docker_bp.route('/docker/containers/start/<container_id>', methods=['POST'])
@@ -579,9 +684,37 @@ def start_container_route(container_id):
             container.status = 'running'
             db.session.commit()
 
+        # Emit WebSocket event for container status change
+        socketio.emit('container_status_change', {
+            'container_id': container_id,
+            'status': 'running',
+            'action': 'start',
+            'timestamp': datetime.utcnow().isoformat(),
+            'success': True
+        }, room=f'container_logs_{container_id}')
+
         flash('Container started successfully.', 'success')
     else:
+        # Emit WebSocket event for failed action
+        socketio.emit('container_status_change', {
+            'container_id': container_id,
+            'action': 'start',
+            'timestamp': datetime.utcnow().isoformat(),
+            'success': False,
+            'error': output
+        }, room=f'container_logs_{container_id}')
+
         flash(f'Error starting container: {output}', 'danger')
+
+    # Check if we're coming from the container logs page
+    referrer = request.referrer
+    if referrer and 'logs' in referrer and container_id in referrer:
+        # Extract the config ID from the referrer
+        import re
+        match = re.search(r'/docker/logs/(\d+)/', referrer)
+        if match:
+            config_id = match.group(1)
+            return redirect(url_for('docker.container_logs', id=config_id, container_id=container_id))
 
     return redirect(url_for('docker.list_containers'))
 
@@ -599,9 +732,37 @@ def stop_container_route(container_id):
             container.status = 'stopped'
             db.session.commit()
 
+        # Emit WebSocket event for container status change
+        socketio.emit('container_status_change', {
+            'container_id': container_id,
+            'status': 'stopped',
+            'action': 'stop',
+            'timestamp': datetime.utcnow().isoformat(),
+            'success': True
+        }, room=f'container_logs_{container_id}')
+
         flash('Container stopped successfully.', 'success')
     else:
+        # Emit WebSocket event for failed action
+        socketio.emit('container_status_change', {
+            'container_id': container_id,
+            'action': 'stop',
+            'timestamp': datetime.utcnow().isoformat(),
+            'success': False,
+            'error': output
+        }, room=f'container_logs_{container_id}')
+
         flash(f'Error stopping container: {output}', 'danger')
+
+    # Check if we're coming from the container logs page
+    referrer = request.referrer
+    if referrer and 'logs' in referrer and container_id in referrer:
+        # Extract the config ID from the referrer
+        import re
+        match = re.search(r'/docker/logs/(\d+)/', referrer)
+        if match:
+            config_id = match.group(1)
+            return redirect(url_for('docker.container_logs', id=config_id, container_id=container_id))
 
     return redirect(url_for('docker.list_containers'))
 
@@ -613,9 +774,43 @@ def restart_container_route(container_id):
     success, output = restart_container(container_id)
 
     if success:
+        # Update container status in database
+        container = DockerContainer.query.filter_by(container_id=container_id).first()
+        if container:
+            container.status = 'running'
+            db.session.commit()
+
+        # Emit WebSocket event for container status change
+        socketio.emit('container_status_change', {
+            'container_id': container_id,
+            'status': 'running',
+            'action': 'restart',
+            'timestamp': datetime.utcnow().isoformat(),
+            'success': True
+        }, room=f'container_logs_{container_id}')
+
         flash('Container restarted successfully.', 'success')
     else:
+        # Emit WebSocket event for failed action
+        socketio.emit('container_status_change', {
+            'container_id': container_id,
+            'action': 'restart',
+            'timestamp': datetime.utcnow().isoformat(),
+            'success': False,
+            'error': output
+        }, room=f'container_logs_{container_id}')
+
         flash(f'Error restarting container: {output}', 'danger')
+
+    # Check if we're coming from the container logs page
+    referrer = request.referrer
+    if referrer and 'logs' in referrer and container_id in referrer:
+        # Extract the config ID from the referrer
+        import re
+        match = re.search(r'/docker/logs/(\d+)/', referrer)
+        if match:
+            config_id = match.group(1)
+            return redirect(url_for('docker.container_logs', id=config_id, container_id=container_id))
 
     return redirect(url_for('docker.list_containers'))
 

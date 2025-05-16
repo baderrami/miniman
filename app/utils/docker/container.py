@@ -217,7 +217,55 @@ class ContainerManager(DockerBase):
             container_id (str): Container ID or name
             logger: Logger object to record logs
         """
-        self.run_command_with_streaming(
-            ['docker', 'logs', '--follow', container_id],
-            logger=logger
-        )
+        import time
+
+        try:
+            # First, check if the container exists and is running
+            success, container_details = self.inspect_container(container_id)
+
+            if not success:
+                if logger:
+                    logger.add_log_line(f"Error: Container {container_id} not found")
+                    logger.complete(False)
+                return
+
+            # Get container state
+            container_state = container_details.get('State', {})
+            is_running = container_state.get('Running', False)
+
+            if logger:
+                logger.add_log_line(f"Container {container_id} state: {'Running' if is_running else 'Not running'}")
+
+            # If container is not running, show the logs without follow
+            if not is_running:
+                if logger:
+                    logger.add_log_line("Container is not running, showing existing logs")
+
+                self.run_command_with_streaming(
+                    ['docker', 'logs', '--timestamps', container_id],
+                    logger=logger
+                )
+
+                if logger:
+                    logger.add_log_line("End of logs (container not running)")
+                    logger.complete(True)
+                return
+
+            # Get the container start time to only show logs since then
+            started_at = container_state.get('StartedAt', '')
+
+            # For running containers, stream logs with follow
+            if logger:
+                logger.add_log_line(f"Streaming logs for running container {container_id}")
+
+            # Use --since to only show logs since the container started
+            # Use --timestamps to include timestamps in the logs
+            self.run_command_with_streaming(
+                ['docker', 'logs', '--follow', '--timestamps', '--since', started_at, container_id],
+                logger=logger
+            )
+
+        except Exception as e:
+            if logger:
+                logger.add_log_line(f"Error streaming logs: {str(e)}")
+                logger.complete(False)

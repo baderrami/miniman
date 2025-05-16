@@ -32,7 +32,7 @@ def create_app(config_name='default'):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     csrf.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="*")
+    socketio.init_app(app, cors_allowed_origins="*", ping_timeout=60, ping_interval=25)
 
     # Register blueprints
     from app.controllers.auth import auth_bp

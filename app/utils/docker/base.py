@@ -137,6 +137,10 @@ class DockerBase:
         Returns:
             Tuple[bool, str]: Success status and output
         """
+        import select
+        import time
+        import threading
+
         try:
             # Log the start of the operation
             if logger:
@@ -154,11 +158,44 @@ class DockerBase:
             )
 
             output = []
-            for line in process.stdout:
-                line = line.strip()
-                output.append(line)
-                if logger:
-                    logger.add_log_line(line)
+
+            # Flag to indicate if the process is still running
+            is_running = True
+
+            # Function to send heartbeat messages
+            def send_heartbeat():
+                heartbeat_count = 0
+                while is_running:
+                    time.sleep(30)  # Send heartbeat every 30 seconds
+                    if is_running and logger:
+                        heartbeat_count += 1
+                        logger.add_log_line(f"[Heartbeat {heartbeat_count}] Command still running...")
+
+            # Start heartbeat thread for long-running commands
+            heartbeat_thread = threading.Thread(target=send_heartbeat)
+            heartbeat_thread.daemon = True
+            heartbeat_thread.start()
+
+            # Use select to read from stdout without blocking
+            while is_running:
+                # Check if process has terminated
+                if process.poll() is not None:
+                    is_running = False
+                    break
+
+                # Use select with a timeout to avoid blocking indefinitely
+                ready_to_read, _, _ = select.select([process.stdout], [], [], 0.5)
+
+                if ready_to_read:
+                    line = process.stdout.readline()
+                    if not line:  # EOF
+                        is_running = False
+                        break
+
+                    line = line.strip()
+                    output.append(line)
+                    if logger:
+                        logger.add_log_line(line)
 
             # Wait for the process to complete
             return_code = process.wait()
