@@ -12,7 +12,7 @@ def make_shell_context():
     """
     Add database and models to shell context for easy access in shell
     """
-    return dict(db=db, User=User, NetworkInterface=NetworkInterface, 
+    return dict(db=db, User=User, NetworkInterface=NetworkInterface,
                 DockerComposeConfig=DockerComposeConfig, DockerContainer=DockerContainer,
                 DockerImage=DockerImage, DockerVolume=DockerVolume, DockerNetwork=DockerNetwork)
 
@@ -110,5 +110,4 @@ def create_user():
     print(f"User '{username}' created successfully.")
 
 if __name__ == '__main__':
-    from app import socketio
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

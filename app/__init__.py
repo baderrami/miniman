@@ -2,14 +2,12 @@ from flask import Flask, redirect, url_for
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
-from flask_socketio import SocketIO
 from datetime import datetime
 
 # Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-socketio = SocketIO()
 
 def create_app(config_name='default'):
     """
@@ -32,11 +30,6 @@ def create_app(config_name='default'):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     csrf.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="*", ping_timeout=60, ping_interval=25)
-
-    # Initialize WebSocket manager
-    from app.utils import websocket_manager
-    websocket_manager.init_socketio(socketio)
 
     # Register blueprints
     from app.controllers.auth import auth_bp

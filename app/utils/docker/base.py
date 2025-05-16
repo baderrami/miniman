@@ -6,7 +6,16 @@ This module provides the base class for Docker operations.
 
 import subprocess
 import json
-from typing import Dict, List, Tuple, Any, Optional
+import time
+import logging
+import functools
+from typing import Dict, List, Tuple, Any, Optional, Callable, TypeVar, cast
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Type variables for generic functions
+T = TypeVar('T')
 
 
 class DockerBase:
@@ -15,6 +24,10 @@ class DockerBase:
     def __init__(self):
         """Initialize the Docker base class."""
         self.ensure_docker_installed()
+        self._last_health_check = 0
+        self._docker_healthy = False
+        # Perform initial health check
+        self.check_docker_health()
 
     def ensure_docker_installed(self) -> bool:
         """
@@ -206,3 +219,125 @@ class DockerBase:
                 except json.JSONDecodeError:
                     pass
         return results
+
+    def check_docker_health(self, force: bool = False) -> bool:
+        """
+        Check if Docker daemon is healthy and responsive.
+
+        This method caches the health status for 30 seconds to avoid excessive checks.
+
+        Args:
+            force (bool): Force a new health check even if cached result is available
+
+        Returns:
+            bool: True if Docker daemon is healthy, False otherwise
+        """
+        current_time = time.time()
+
+        # Use cached result if available and not forced
+        if not force and (current_time - self._last_health_check) < 30:
+            return self._docker_healthy
+
+        try:
+            # Simple command to check if Docker daemon is responsive
+            result = subprocess.run(
+                ['docker', 'info'],
+                capture_output=True,
+                text=True,
+                timeout=5  # Set a timeout to avoid hanging
+            )
+
+            # Update health status
+            self._docker_healthy = result.returncode == 0
+            self._last_health_check = current_time
+
+            if self._docker_healthy:
+                logger.debug("Docker daemon health check: Healthy")
+            else:
+                logger.warning(f"Docker daemon health check: Unhealthy - {result.stderr.strip()}")
+
+            return self._docker_healthy
+
+        except subprocess.TimeoutExpired:
+            logger.error("Docker daemon health check: Timeout - daemon is not responding")
+            self._docker_healthy = False
+            self._last_health_check = current_time
+            return False
+
+        except Exception as e:
+            logger.error(f"Docker daemon health check: Error - {str(e)}")
+            self._docker_healthy = False
+            self._last_health_check = current_time
+            return False
+
+    def with_docker_health_check(self, func):
+        """
+        Decorator to check Docker health before executing a function.
+
+        Args:
+            func: The function to wrap with health check
+
+        Returns:
+            Function: Wrapped function that checks Docker health first
+        """
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if not self.check_docker_health():
+                logger.error(f"Docker operation '{func.__name__}' aborted: Docker daemon is not healthy")
+                return False, "Docker daemon is not healthy or not responding"
+            return func(*args, **kwargs)
+        return wrapper
+
+    def with_retry(self, max_retries: int = 3, delay: float = 1.0, 
+                  backoff: float = 2.0, exceptions: tuple = (Exception,)):
+        """
+        Decorator to retry a function on failure with exponential backoff.
+
+        Args:
+            max_retries (int): Maximum number of retries
+            delay (float): Initial delay between retries in seconds
+            backoff (float): Backoff multiplier (e.g. 2 means delay doubles each retry)
+            exceptions (tuple): Exceptions to catch and retry on
+
+        Returns:
+            Callable: Decorator function
+        """
+        def decorator(func: Callable[..., T]) -> Callable[..., T]:
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs) -> T:
+                mtries, mdelay = max_retries, delay
+                last_exception = None
+
+                # Try the function up to max_retries times
+                while mtries > 0:
+                    try:
+                        return func(*args, **kwargs)
+                    except exceptions as e:
+                        mtries -= 1
+                        last_exception = e
+
+                        if mtries <= 0:
+                            logger.error(f"Function {func.__name__} failed after {max_retries} retries: {str(e)}")
+                            break
+
+                        logger.warning(f"Retrying {func.__name__} in {mdelay:.2f}s after error: {str(e)}")
+                        time.sleep(mdelay)
+                        mdelay *= backoff
+
+                # If we get here, all retries failed
+                if isinstance(last_exception, Exception):
+                    logger.error(f"All retries failed for {func.__name__}: {str(last_exception)}")
+                    # For Docker operations that return (bool, str) tuples
+                    if hasattr(func, '__annotations__') and 'return' in func.__annotations__:
+                        return_type = func.__annotations__['return']
+                        if return_type == Tuple[bool, str]:
+                            return cast(T, (False, f"Operation failed after {max_retries} retries: {str(last_exception)}"))
+
+                    # Re-raise the last exception
+                    raise last_exception
+
+                # This should never happen, but just in case
+                return cast(T, None)
+
+            return wrapper
+        return decorator

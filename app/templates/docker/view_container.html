@@ -4,7 +4,6 @@
 
 {% block head %}
 {{ super() }}
-<script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js" integrity="sha384-ZhGVH+qRtx6Pf1yoz3jqzZZBZZXX3Y1N1J4FgCtiXIQNpB2PzGmOQOXYKiMF4EWV" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js" integrity="sha384-rKvJx2CpqQV7AAzx4EnEEKuLl0DQTg0SuHVYXJ1VPY0pPz4xYSBJnQGJVxvXJsL" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" integrity="sha384-e+HCZQzGR8o0TmdxoE7ZYKQVUCGBp/xOJXZDmZKiQYJE2H/Q8YYE6vJBuKsXP3G" crossorigin="anonymous" />
@@ -25,7 +24,8 @@
         <!-- Hidden inputs for JavaScript -->
         <input type="hidden" id="container-id" value="{{ container.Id }}">
         <input type="hidden" id="room-name" value="{{ room_name }}">
-        
+        <input type="hidden" id="csrf-token" value="{{ csrf_token() }}">
+
         <div class="row mb-4">
             <div class="col-md-6">
                 {% include 'docker/components/container-info.html' %}
@@ -47,14 +47,4 @@
         </div>
     {% endif %}
 </div>
-{% endblock %}
-
-{% block scripts %}
-{{ super() }}
-<!-- Load container-specific JavaScript files -->
-<script src="{{ url_for('static', filename='js/docker/container-common.js') }}"></script>
-<script src="{{ url_for('static', filename='js/docker/container-logs.js') }}"></script>
-<script src="{{ url_for('static', filename='js/docker/container-terminal.js') }}"></script>
-<script src="{{ url_for('static', filename='js/docker/container-files.js') }}"></script>
-<script src="{{ url_for('static', filename='js/docker/container-stats.js') }}"></script>
 {% endblock %}

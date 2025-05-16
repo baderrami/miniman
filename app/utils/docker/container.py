@@ -238,7 +238,7 @@ class ContainerManager(DockerBase):
 
     def exec_container_command(self, container_id: str, command: str) -> Tuple[bool, str]:
         """
-        Execute a command in a container.
+        Execute a command in a container with improved error handling.
 
         Args:
             container_id (str): Container ID or name
@@ -251,20 +251,33 @@ class ContainerManager(DockerBase):
             # Get the container
             container = self.client.containers.get(container_id)
 
-            # Execute the command
-            exec_result = container.exec_run(command, stream=False)
+            # Check if container is running
+            if container.status != 'running':
+                return False, f"Container {container_id} is not running. Current status: {container.status}"
 
-            # Return the result
-            return exec_result.exit_code == 0, exec_result.output.decode('utf-8')
+            # Execute the command with timeout
+            exec_result = container.exec_run(command, stream=False, demux=True, tty=True)
+
+            # Process the result
+            exit_code = exec_result.exit_code
+
+            # Handle different output formats based on demux parameter
+            if isinstance(exec_result.output, tuple):
+                stdout, stderr = exec_result.output
+                output = (stdout or b'').decode('utf-8', errors='replace')
+                error = (stderr or b'').decode('utf-8', errors='replace')
+
+                if error and exit_code != 0:
+                    return False, f"Command failed with error: {error}"
+                return exit_code == 0, output
+            else:
+                return exit_code == 0, exec_result.output.decode('utf-8', errors='replace')
 
         except docker.errors.NotFound:
-            # Container not found
             return False, f"Container {container_id} not found"
         except docker.errors.APIError as e:
-            # Docker API error
             return False, f"Docker API error: {str(e)}"
         except Exception as e:
-            # Other errors
             return False, f"Error executing command: {str(e)}"
 
     def get_container_stats(self, container_id: str) -> Tuple[bool, Dict[str, Any]]:
@@ -500,7 +513,7 @@ class ContainerManager(DockerBase):
 
     def stream_container_logs(self, container_id: str, log_callback: Callable[[str], None]) -> None:
         """
-        Stream logs from a container in real-time using the Docker Python SDK.
+        Stream logs from a container in real-time using the Docker Python SDK with improved error handling.
 
         Args:
             container_id (str): Container ID or name
@@ -512,28 +525,55 @@ class ContainerManager(DockerBase):
 
             # Check if the container exists
             if not container:
+                log_callback(f"Error: Container {container_id} not found")
                 return
 
             # Get container state
             is_running = container.status == 'running'
 
+            # Notify about container state
+            if not is_running:
+                log_callback(f"Note: Container {container_id} is not running (status: {container.status}). Showing existing logs only.")
+
             # If container is not running, show the logs without follow
             if not is_running:
-                logs = container.logs(timestamps=True, stream=False).decode('utf-8')
-                for line in logs.splitlines():
-                    log_callback(line)
+                try:
+                    logs = container.logs(timestamps=True, stream=False).decode('utf-8', errors='replace')
+                    if not logs.strip():
+                        log_callback("No logs available for this container")
+                    else:
+                        for line in logs.splitlines():
+                            log_callback(line)
+                except Exception as e:
+                    log_callback(f"Error retrieving logs: {str(e)}")
                 return
 
             # Stream logs with timestamps
-            for line in container.logs(timestamps=True, stream=True, follow=True):
-                log_callback(line.decode('utf-8'))
+            try:
+                for line in container.logs(timestamps=True, stream=True, follow=True):
+                    try:
+                        log_callback(line.decode('utf-8', errors='replace'))
+                    except UnicodeDecodeError:
+                        # Handle binary data that can't be decoded
+                        log_callback("[Binary data]")
+            except docker.errors.APIError as e:
+                log_callback(f"Error streaming logs: {str(e)}")
+                # Try to get at least the existing logs
+                try:
+                    logs = container.logs(timestamps=True, stream=False).decode('utf-8', errors='replace')
+                    for line in logs.splitlines():
+                        log_callback(line)
+                except Exception:
+                    pass
 
         except docker.errors.NotFound:
             # Container not found
-            return
+            log_callback(f"Error: Container {container_id} not found")
         except docker.errors.APIError as e:
             # Docker API error
-            print(f"Docker API error: {str(e)}")
+            log_callback(f"Docker API error: {str(e)}")
+            print(f"Docker API error in stream_container_logs: {str(e)}")
         except Exception as e:
             # Other errors
-            print(f"Error streaming logs: {str(e)}")
+            log_callback(f"Error streaming logs: {str(e)}")
+            print(f"Error in stream_container_logs: {str(e)}")

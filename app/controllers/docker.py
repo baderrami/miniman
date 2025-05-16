@@ -1,9 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required
 from app import db
 import json
 from app.models.docker import DockerComposeConfig, DockerContainer, DockerImage, DockerVolume, DockerNetwork
-from app.utils import websocket_manager
 from app.utils.docker import (
     ensure_docker_installed, install_docker, download_compose_file,
     check_for_updates, update_compose_file, run_compose, stop_compose,
@@ -24,389 +23,11 @@ from datetime import datetime
 # Create blueprint
 docker_bp = Blueprint('docker', __name__)
 
-# Register Docker-specific WebSocket event handlers
-@websocket_manager.register_event_handler('stream_container_logs')
-def handle_stream_container_logs(data):
-    """
-    Handle streaming container logs via WebSocket.
 
-    Args:
-        data (dict): Data containing container_id and room information
-    """
-    container_id = data.get('container_id')
-    room = data.get('room')
 
-    if not container_id or not room:
-        websocket_manager.emit_event('status', {'msg': 'Missing container_id or room'}, room)
-        return
 
-    # Send a message to indicate streaming is starting
-    websocket_manager.emit_event('status', {'msg': f'Starting log streaming for container {container_id}...'}, room)
 
-    # Define the streaming function
-    def stream_logs_thread():
-        try:
-            # Create a container manager instance
-            container_manager = ContainerManager()
 
-            # Define a custom logger function to emit log lines via WebSocket
-            def log_emitter(line):
-                # Each line from docker logs will be sent to the client
-                websocket_manager.emit_event('docker_log', {
-                    'container_id': container_id,
-                    'line': line.strip(),
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-
-            # Stream the logs using the Python Docker SDK
-            try:
-                # Use the container manager to stream logs
-                container_manager.stream_container_logs(container_id, log_emitter)
-
-                # Emit completion event
-                websocket_manager.emit_event('docker_log_complete', {
-                    'container_id': container_id,
-                    'success': True,
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-
-            except Exception as e:
-                print(f"Error streaming logs: {str(e)}")
-                websocket_manager.emit_event('docker_log_complete', {
-                    'container_id': container_id,
-                    'success': False,
-                    'error': str(e),
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-
-        except Exception as e:
-            print(f"Error in stream_logs_thread: {str(e)}")
-            websocket_manager.emit_event('docker_log_complete', {
-                'container_id': container_id,
-                'success': False,
-                'error': str(e),
-                'timestamp': datetime.now().isoformat(),
-            }, room)
-
-    # Run in a background thread to avoid blocking
-    websocket_manager.run_in_background(stream_logs_thread)
-
-@websocket_manager.register_event_handler('terminal_exec')
-def handle_terminal_exec(data):
-    """
-    Handle interactive terminal execution via WebSocket.
-
-    Args:
-        data (dict): Data containing container_id, command, and room information
-    """
-    container_id = data.get('container_id')
-    command = data.get('command')
-    room = data.get('room')
-
-    if not container_id or not command or not room:
-        websocket_manager.emit_event('terminal_output', {
-            'error': 'Missing container_id, command, or room',
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-        return
-
-    # Send a message to indicate command execution
-    websocket_manager.emit_event('status', {'msg': f'Executing command in container {container_id}...'}, room)
-
-    # Execute the command
-    try:
-        # Create a container manager instance
-        container_manager = ContainerManager()
-
-        # Execute the command
-        success, output = container_manager.exec_container_command(container_id, command)
-
-        # Emit the result
-        websocket_manager.emit_event('terminal_output', {
-            'container_id': container_id,
-            'command': command,
-            'output': output,
-            'success': success,
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-
-    except Exception as e:
-        print(f"Error executing command: {str(e)}")
-        websocket_manager.emit_event('terminal_output', {
-            'container_id': container_id,
-            'command': command,
-            'error': str(e),
-            'success': False,
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-
-@websocket_manager.register_event_handler('list_files')
-def handle_list_files(data):
-    """
-    Handle listing files in a container via WebSocket.
-
-    Args:
-        data (dict): Data containing container_id, path, and room information
-    """
-    container_id = data.get('container_id')
-    path = data.get('path', '/')
-    room = data.get('room')
-
-    if not container_id or not room:
-        websocket_manager.emit_event('file_list', {
-            'error': 'Missing container_id or room',
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-        return
-
-    # Send a message to indicate file listing
-    websocket_manager.emit_event('status', {'msg': f'Listing files in container {container_id} at {path}...'}, room)
-
-    # List the files
-    try:
-        # Create a container manager instance
-        container_manager = ContainerManager()
-
-        # Execute the ls command to list files using the Docker Python SDK
-        success, output = container_manager.exec_container_command(container_id, f"ls -la {path}")
-
-        if not success:
-            websocket_manager.emit_event('file_list', {
-                'container_id': container_id,
-                'path': path,
-                'error': output,
-                'success': False,
-                'timestamp': datetime.now().isoformat(),
-            }, room)
-            return
-
-        # Parse the output to get file list
-        files = []
-        for line in output.strip().split('\n'):
-            if line.startswith('total ') or not line.strip():
-                continue
-
-            parts = line.split()
-            if len(parts) < 9:
-                continue
-
-            permissions = parts[0]
-            size = parts[4]
-            date = ' '.join(parts[5:8])
-            name = ' '.join(parts[8:])
-
-            # Check if it's a directory
-            is_dir = permissions.startswith('d')
-
-            files.append({
-                'name': name,
-                'is_dir': is_dir,
-                'size': size,
-                'date': date,
-                'permissions': permissions
-            })
-
-        # Emit the file list
-        websocket_manager.emit_event('file_list', {
-            'container_id': container_id,
-            'path': path,
-            'files': files,
-            'success': True,
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-
-    except Exception as e:
-        print(f"Error listing files: {str(e)}")
-        websocket_manager.emit_event('file_list', {
-            'container_id': container_id,
-            'path': path,
-            'error': str(e),
-            'success': False,
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-
-@websocket_manager.register_event_handler('read_file')
-def handle_read_file(data):
-    """
-    Handle reading a file in a container via WebSocket.
-
-    Args:
-        data (dict): Data containing container_id, file_path, and room information
-    """
-    container_id = data.get('container_id')
-    file_path = data.get('file_path')
-    room = data.get('room')
-
-    if not container_id or not file_path or not room:
-        websocket_manager.emit_event('file_content', {
-            'error': 'Missing container_id, file_path, or room',
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-        return
-
-    # Send a message to indicate file reading
-    websocket_manager.emit_event('status', {'msg': f'Reading file {file_path} in container {container_id}...'}, room)
-
-    # Read the file
-    try:
-        # Create a container manager instance
-        container_manager = ContainerManager()
-
-        # Execute the cat command to read the file using the Docker Python SDK
-        success, output = container_manager.exec_container_command(container_id, f"cat {file_path}")
-
-        # Emit the file content
-        websocket_manager.emit_event('file_content', {
-            'container_id': container_id,
-            'file_path': file_path,
-            'content': output,
-            'success': success,
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-
-    except Exception as e:
-        print(f"Error reading file: {str(e)}")
-        websocket_manager.emit_event('file_content', {
-            'container_id': container_id,
-            'file_path': file_path,
-            'error': str(e),
-            'success': False,
-            'timestamp': datetime.now().isoformat(),
-        }, room)
-
-@websocket_manager.register_event_handler('stream_container_stats')
-def handle_stream_container_stats(data):
-    """
-    Handle streaming container stats via WebSocket.
-
-    Args:
-        data (dict): Data containing container_id, interval, and room information
-    """
-    container_id = data.get('container_id')
-    interval = data.get('interval', 2000)  # Default to 2 seconds
-    room = data.get('room')
-
-    if not container_id or not room:
-        websocket_manager.emit_event('status', {'msg': 'Missing container_id or room'}, room)
-        return
-
-    # Convert interval to seconds for the stats streaming
-    interval_seconds = max(1, int(interval) / 1000)
-
-    # Send a message to indicate streaming is starting
-    websocket_manager.emit_event('status', {'msg': f'Starting stats streaming for container {container_id}...'}, room)
-
-    # Define the streaming function
-    def stream_stats_thread():
-        try:
-            # Create a container manager instance
-            container_manager = ContainerManager()
-
-            # Get container details to check if it exists and is running
-            success, container_details = container_manager.inspect_container(container_id)
-
-            if not success:
-                websocket_manager.emit_event('container_stats_complete', {
-                    'container_id': container_id,
-                    'success': False,
-                    'error': 'Container not found',
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-                return
-
-            # Check if container is running
-            container_state = container_details.get('State', {})
-            is_running = container_state.get('Running', False)
-
-            if not is_running:
-                websocket_manager.emit_event('container_stats_complete', {
-                    'container_id': container_id,
-                    'success': False,
-                    'error': 'Container is not running',
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-                return
-
-            # Stream the stats using the Docker Python SDK
-            try:
-                # Get the container
-                container = container_manager.client.containers.get(container_id)
-
-                # Stream stats
-                import time
-
-                # Get initial stats to establish baseline
-                for stats in container.stats(stream=True, decode=True):
-                    try:
-                        # Process the stats to match the format expected by the frontend
-                        processed_stats = {
-                            'Name': container.name,
-                            'ID': container.id[:12],
-                            'CPUPerc': container_manager._calculate_cpu_percentage(stats),
-                            'MemUsage': container_manager._format_memory_usage(stats),
-                            'MemPerc': container_manager._calculate_memory_percentage(stats),
-                            'NetIO': container_manager._format_network_io(stats),
-                            'BlockIO': container_manager._format_block_io(stats),
-                            'PIDs': stats.get('pids_stats', {}).get('current', 0)
-                        }
-
-                        # Emit the stats
-                        websocket_manager.emit_event('container_stats', {
-                            'container_id': container_id,
-                            'stats': processed_stats,
-                            'timestamp': datetime.now().isoformat(),
-                        }, room)
-
-                        # Sleep for the specified interval
-                        time.sleep(interval_seconds)
-
-                    except Exception as e:
-                        print(f"Error processing stats: {str(e)}")
-                        continue
-
-                # This point should not be reached unless the stats stream ends
-                websocket_manager.emit_event('container_stats_complete', {
-                    'container_id': container_id,
-                    'success': True,
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-
-            except docker.errors.NotFound:
-                # Container not found or was removed during streaming
-                websocket_manager.emit_event('container_stats_complete', {
-                    'container_id': container_id,
-                    'success': False,
-                    'error': 'Container not found or was removed',
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-            except docker.errors.APIError as e:
-                # Docker API error
-                websocket_manager.emit_event('container_stats_complete', {
-                    'container_id': container_id,
-                    'success': False,
-                    'error': f'Docker API error: {str(e)}',
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-            except Exception as e:
-                print(f"Error streaming stats: {str(e)}")
-                websocket_manager.emit_event('container_stats_complete', {
-                    'container_id': container_id,
-                    'success': False,
-                    'error': str(e),
-                    'timestamp': datetime.now().isoformat(),
-                }, room)
-
-        except Exception as e:
-            print(f"Error in stream_stats_thread: {str(e)}")
-            websocket_manager.emit_event('container_stats_complete', {
-                'container_id': container_id,
-                'success': False,
-                'error': str(e),
-                'timestamp': datetime.now().isoformat(),
-            }, room)
-
-    # Run in a background thread to avoid blocking
-    websocket_manager.run_in_background(stream_stats_thread)
 
 @docker_bp.route('/docker')
 @login_required
@@ -852,24 +473,9 @@ def start_container_route(container_id):
             container.status = 'running'
             db.session.commit()
 
-        # Emit WebSocket event for container status change
-        websocket_manager.emit_container_status_change(
-            container_id=container_id,
-            status='running',
-            action='start',
-            success=True
-        )
 
         flash('Container started successfully.', 'success')
     else:
-        # Emit WebSocket event for failed action
-        websocket_manager.emit_container_status_change(
-            container_id=container_id,
-            status='error',
-            action='start',
-            success=False,
-            error=output
-        )
 
         flash(f'Error starting container: {output}', 'danger')
 
@@ -899,24 +505,9 @@ def stop_container_route(container_id):
             container.status = 'stopped'
             db.session.commit()
 
-        # Emit WebSocket event for container status change
-        websocket_manager.emit_container_status_change(
-            container_id=container_id,
-            status='stopped',
-            action='stop',
-            success=True
-        )
 
         flash('Container stopped successfully.', 'success')
     else:
-        # Emit WebSocket event for failed action
-        websocket_manager.emit_container_status_change(
-            container_id=container_id,
-            status='error',
-            action='stop',
-            success=False,
-            error=output
-        )
 
         flash(f'Error stopping container: {output}', 'danger')
 
@@ -946,24 +537,9 @@ def restart_container_route(container_id):
             container.status = 'running'
             db.session.commit()
 
-        # Emit WebSocket event for container status change
-        websocket_manager.emit_container_status_change(
-            container_id=container_id,
-            status='running',
-            action='restart',
-            success=True
-        )
 
         flash('Container restarted successfully.', 'success')
     else:
-        # Emit WebSocket event for failed action
-        websocket_manager.emit_container_status_change(
-            container_id=container_id,
-            status='error',
-            action='restart',
-            success=False,
-            error=output
-        )
 
         flash(f'Error restarting container: {output}', 'danger')
 

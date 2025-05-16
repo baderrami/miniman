@@ -3,7 +3,6 @@ from flask_login import login_required, current_user
 from app.controllers.auth import admin_required
 from app.utils.system_utils import get_system_info, perform_system_reset, get_disk_usage
 from app import db
-from app.utils import websocket_manager
 
 # Create blueprint
 system_bp = Blueprint('system', __name__)
