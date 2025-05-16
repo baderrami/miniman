@@ -110,49 +110,6 @@
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Recent Operations</h5>
-        </div>
-        <div class="card-body">
-            {% if config.operation_logs.count() > 0 %}
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Operation</th>
-                                <th>Status</th>
-                                <th>Started</th>
-                                <th>Completed</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in config.operation_logs.order_by(DockerOperationLog.started_at.desc()).limit(5).all() %}
-                                <tr>
-                                    <td>{{ log.operation_type }}</td>
-                                    <td>
-                                        <span class="badge {% if log.status == 'completed' %}bg-success{% elif log.status == 'running' %}bg-primary{% else %}bg-danger{% endif %}">
-                                            {{ log.status }}
-                                        </span>
-                                    </td>
-                                    <td>{{ log.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                    <td>{{ log.completed_at.strftime('%Y-%m-%d %H:%M:%S') if log.completed_at else 'Running...' }}</td>
-                                    <td>
-                                        <a href="{{ url_for('docker.operation_log', id=log.id) }}" class="btn btn-sm btn-info">View Logs</a>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="alert alert-info">
-                    No operations have been performed on this configuration yet.
-                </div>
-            {% endif %}
-        </div>
-    </div>
 
     <div class="card">
         <div class="card-header">

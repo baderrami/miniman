@@ -50,14 +50,14 @@ class ImageManager(DockerBase):
 
         Args:
             image_name (str): Image name (and tag)
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
 
         Returns:
             Tuple[bool, str]: Success status and output
         """
         return self.run_command_with_streaming(
             ['docker', 'pull', image_name],
-            logger=logger
+            logger=None
         )
 
     def remove_image(self, image_id: str, force: bool = False) -> Tuple[bool, str]:
@@ -88,22 +88,15 @@ class ImageManager(DockerBase):
         Args:
             dockerfile_path (str): Path to the directory containing the Dockerfile
             tag (str): Tag for the image
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
 
         Returns:
             Tuple[bool, str]: Success status and output
         """
-        if logger:
-            return self.run_command_with_streaming(
-                ['docker', 'build', '-t', tag, dockerfile_path],
-                logger=logger
-            )
-        else:
-            return self.run_command(
-                ['docker', 'build', '-t', tag, dockerfile_path],
-                capture_output=True,
-                check=False
-            )
+        return self.run_command_with_streaming(
+            ['docker', 'build', '-t', tag, dockerfile_path],
+            logger=None
+        )
 
     def inspect_image(self, image_id: str) -> Tuple[bool, Dict[str, Any]]:
         """

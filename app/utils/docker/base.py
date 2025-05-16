@@ -131,7 +131,7 @@ class DockerBase:
 
         Args:
             cmd (List[str]): Command to run
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
             cwd (Optional[str]): Working directory
 
         Returns:
@@ -139,13 +139,8 @@ class DockerBase:
         """
         import select
         import time
-        import threading
 
         try:
-            # Log the start of the operation
-            if logger:
-                logger.add_log_line(f"Starting command: {' '.join(cmd)}")
-
             # Run command with real-time output
             process = subprocess.Popen(
                 cmd,
@@ -161,20 +156,6 @@ class DockerBase:
 
             # Flag to indicate if the process is still running
             is_running = True
-
-            # Function to send heartbeat messages
-            def send_heartbeat():
-                heartbeat_count = 0
-                while is_running:
-                    time.sleep(30)  # Send heartbeat every 30 seconds
-                    if is_running and logger:
-                        heartbeat_count += 1
-                        logger.add_log_line(f"[Heartbeat {heartbeat_count}] Command still running...")
-
-            # Start heartbeat thread for long-running commands
-            heartbeat_thread = threading.Thread(target=send_heartbeat)
-            heartbeat_thread.daemon = True
-            heartbeat_thread.start()
 
             # Use select to read from stdout without blocking
             while is_running:
@@ -194,28 +175,17 @@ class DockerBase:
 
                     line = line.strip()
                     output.append(line)
-                    if logger:
-                        logger.add_log_line(line)
 
             # Wait for the process to complete
             return_code = process.wait()
 
             # Check if the command was successful
             if return_code == 0:
-                if logger:
-                    logger.add_log_line("Command completed successfully")
-                    logger.complete(True)
                 return True, "\n".join(output)
             else:
-                if logger:
-                    logger.add_log_line(f"Command failed with return code {return_code}")
-                    logger.complete(False)
                 return False, "\n".join(output)
         except Exception as e:
             error_message = f"Error running command: {str(e)}"
-            if logger:
-                logger.add_log_line(error_message)
-                logger.complete(False)
             return False, error_message
 
     def parse_json_output(self, output: str) -> List[Dict[str, Any]]:

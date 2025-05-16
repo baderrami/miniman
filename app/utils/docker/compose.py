@@ -161,7 +161,7 @@ class ComposeManager(DockerBase):
 
         Args:
             config_path (str): Path to Docker Compose file
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
 
         Returns:
             Tuple[bool, str]: Success status and output
@@ -171,7 +171,7 @@ class ComposeManager(DockerBase):
 
         return self.run_command_with_streaming(
             ['docker', 'compose', '-f', config_path, 'up', '-d'],
-            logger=logger,
+            logger=None,
             cwd=config_dir
         )
 
@@ -181,7 +181,7 @@ class ComposeManager(DockerBase):
 
         Args:
             config_path (str): Path to Docker Compose file
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
 
         Returns:
             Tuple[bool, str]: Success status and output
@@ -191,7 +191,7 @@ class ComposeManager(DockerBase):
 
         return self.run_command_with_streaming(
             ['docker', 'compose', '-f', config_path, 'down'],
-            logger=logger,
+            logger=None,
             cwd=config_dir
         )
 
@@ -201,7 +201,7 @@ class ComposeManager(DockerBase):
 
         Args:
             config_path (str): Path to Docker Compose file
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
 
         Returns:
             Tuple[bool, str]: Success status and output
@@ -211,7 +211,7 @@ class ComposeManager(DockerBase):
 
         return self.run_command_with_streaming(
             ['docker', 'compose', '-f', config_path, 'restart'],
-            logger=logger,
+            logger=None,
             cwd=config_dir
         )
 
@@ -221,7 +221,7 @@ class ComposeManager(DockerBase):
 
         Args:
             config_path (str): Path to Docker Compose file
-            logger: Logger object to record logs
+            logger: Deprecated parameter, kept for backward compatibility
 
         Returns:
             Tuple[bool, str]: Success status and output
@@ -231,7 +231,7 @@ class ComposeManager(DockerBase):
 
         return self.run_command_with_streaming(
             ['docker', 'compose', '-f', config_path, 'pull'],
-            logger=logger,
+            logger=None,
             cwd=config_dir
         )
 
