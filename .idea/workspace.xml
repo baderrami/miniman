@@ -4,14 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Refactor WebSocket handling for Docker operations&#10;&#10;Centralized WebSocket management using a new `websocket_manager` module, decoupling WebSocket logic from Flask-SocketIO. Simplified event handlers, added background task utilities, and improved log handling for real-time Docker feedback.">
+    <list default="true" id="4822fc54-cfbd-4f76-bd2c-a152f107c319" name="Changes" comment="Remove container logs section from the view container page&#10;&#10;The container logs display has been removed from the HTML template. This simplifies the page by eliminating the logs UI, including streaming and auto-scroll functionality. Adjustments may be necessary if logs are required elsewhere.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/docker/operation_log.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/templates/docker/view_config.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/docker/view_config.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker/compose.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/compose.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker/container.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/container.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/docker/image.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/image.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/docker/REALTIME_LOGS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/docker/compat.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/docker/compat.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/websocket_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/websocket_manager.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -321,7 +318,23 @@
       <option name="project" value="LOCAL" />
       <updated>1747399650746</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="Remove deprecated templates and logger usage in Docker utils&#10;&#10;Deleted unused operation log templates and associated references. Deprecated the &quot;logger&quot; parameter in Docker utility methods for better consistency and simpler code. Adjusted methods to handle streaming outputs without optional logger dependencies.">
+      <option name="closed" value="true" />
+      <created>1747406812206</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1747406812206</updated>
+    </task>
+    <task id="LOCAL-00023" summary="Remove container logs section from the view container page&#10;&#10;The container logs display has been removed from the HTML template. This simplifies the page by eliminating the logs UI, including streaming and auto-scroll functionality. Adjustments may be necessary if logs are required elsewhere.">
+      <option name="closed" value="true" />
+      <created>1747407028331</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1747407028331</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -372,7 +385,9 @@
     <MESSAGE value="Remove unused Docker utilities code&#10;&#10;The `docker_utils.py` file containing various Docker-related utility functions has been completely removed. This cleanup eliminates obsolete or redundant code, ensuring a leaner codebase." />
     <MESSAGE value="Add WebSocket-based real-time Docker logs and UI improvements&#10;&#10;Implemented WebSocket support for real-time streaming of Docker logs. Updated templates to include an interactive log viewer with auto-scroll, clear logs, and start/stop streaming functionality. Refactored and cleaned up unused Docker utility files, improving code organization and maintainability." />
     <MESSAGE value="Refactor WebSocket handling for Docker operations&#10;&#10;Centralized WebSocket management using a new `websocket_manager` module, decoupling WebSocket logic from Flask-SocketIO. Simplified event handlers, added background task utilities, and improved log handling for real-time Docker feedback." />
-    <option name="LAST_COMMIT_MESSAGE" value="" />
+    <MESSAGE value="Remove deprecated templates and logger usage in Docker utils&#10;&#10;Deleted unused operation log templates and associated references. Deprecated the &quot;logger&quot; parameter in Docker utility methods for better consistency and simpler code. Adjusted methods to handle streaming outputs without optional logger dependencies." />
+    <MESSAGE value="Remove container logs section from the view container page&#10;&#10;The container logs display has been removed from the HTML template. This simplifies the page by eliminating the logs UI, including streaming and auto-scroll functionality. Adjustments may be necessary if logs are required elsewhere." />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove container logs section from the view container page&#10;&#10;The container logs display has been removed from the HTML template. This simplifies the page by eliminating the logs UI, including streaming and auto-scroll functionality. Adjustments may be necessary if logs are required elsewhere." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
@@ -382,6 +397,6 @@
     <SUITE FILE_PATH="coverage/miniman$test_all_tables.coverage" NAME="test_all_tables Coverage Results" MODIFIED="1747171556949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$init_all_tables.coverage" NAME="init_all_tables Coverage Results" MODIFIED="1747239180234" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/miniman$test_docker_tables.coverage" NAME="test_docker_tables Coverage Results" MODIFIED="1747249776205" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747406731987" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/miniman$run.coverage" NAME="run Coverage Results" MODIFIED="1747407752658" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

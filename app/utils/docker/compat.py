@@ -90,7 +90,7 @@ def run_compose(config_path: str, operation_log=None) -> Tuple[bool, str]:
 
     Args:
         config_path (str): Path to Docker Compose file
-        operation_log (DockerOperationLog, optional): Operation log object to record logs
+        operation_log (optional): Deprecated parameter, kept for backward compatibility
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -103,7 +103,7 @@ def stop_compose(config_path: str, operation_log=None) -> Tuple[bool, str]:
 
     Args:
         config_path (str): Path to Docker Compose file
-        operation_log (DockerOperationLog, optional): Operation log object to record logs
+        operation_log (optional): Deprecated parameter, kept for backward compatibility
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -116,7 +116,7 @@ def restart_compose(config_path: str, operation_log=None) -> Tuple[bool, str]:
 
     Args:
         config_path (str): Path to Docker Compose file
-        operation_log (DockerOperationLog, optional): Operation log object to record logs
+        operation_log (optional): Deprecated parameter, kept for backward compatibility
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -129,7 +129,7 @@ def pull_images(config_path: str, operation_log=None) -> Tuple[bool, str]:
 
     Args:
         config_path (str): Path to Docker Compose file
-        operation_log (DockerOperationLog, optional): Operation log object to record logs
+        operation_log (optional): Deprecated parameter, kept for backward compatibility
 
     Returns:
         Tuple[bool, str]: Success status and output
@@ -276,7 +276,7 @@ def pull_image(image_name: str, operation_log=None) -> Tuple[bool, str]:
 
     Args:
         image_name (str): Image name (and tag)
-        operation_log (DockerOperationLog, optional): Operation log object to record logs
+        operation_log (optional): Deprecated parameter, kept for backward compatibility
 
     Returns:
         Tuple[bool, str]: Success status and output
